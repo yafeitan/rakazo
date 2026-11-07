@@ -99,6 +99,16 @@ export type Copy = {
   workSteps: readonly string[];
   seedBanner: string;
   seedLink: string;
+  guestSees: string;
+  typingNow: string;
+  oneTap: string;
+  needsHer: string;
+  sendReply: string;
+  editDraft: string;
+  confirmMine: string;
+  unlocked: string;
+  paidReminder: string;
+  helperWho: string;
   collected: string;
   pendingDeposits: string;
   usage: (count: number) => string;
@@ -251,13 +261,23 @@ const zh: Copy = {
     "正在把公开主页写到 mrlootbox.com",
     "正在准备今天的 X 帖子草稿",
     "正在查看 Catch 和 X 的询问",
-    "正在回复一位客人",
-    "正在向客人要 PayID 订金",
-    "正在更新今天的时间",
+    "起草回复",
+    "等她确认",
+    "整理已付客人资料",
     "正在安排下一次推送",
   ],
   seedBanner: "这是演示模特，还没走入驻。",
   seedLink: "去入驻",
+  guestSees: "客人看到的",
+  typingNow: "正在输入…",
+  oneTap: "可一键发",
+  needsHer: "需本人回复",
+  sendReply: "发送",
+  editDraft: "改一下",
+  confirmMine: "本人确认",
+  unlocked: "已解锁，转她私域（短信/WhatsApp/微信）",
+  paidReminder: "这位客人已付款，加他",
+  helperWho: "演示客人 · 0400 000 222（演示）",
   collected: "本月已收",
   pendingDeposits: "待收订金",
   usage: (count) => `今日用量 ${count}`,
@@ -422,13 +442,23 @@ const en: Copy = {
     "Writing her public profile at mrlootbox.com",
     "Preparing today's X post draft",
     "Checking Ivy and X inquiries",
-    "Replying to a guest",
-    "Requesting the PayID deposit",
-    "Updating today's schedule",
+    "Drafting a reply",
+    "Waiting for her to confirm",
+    "Organizing the paid guest’s details",
     "Planning the next push",
   ],
   seedBanner: "This is a demo model, before onboarding.",
   seedLink: "Fill in onboarding",
+  guestSees: "What the guest sees",
+  typingNow: "typing…",
+  oneTap: "One tap",
+  needsHer: "Needs her reply",
+  sendReply: "Send",
+  editDraft: "Edit",
+  confirmMine: "I'll send this",
+  unlocked: "Unlocked. Move him to her private channel (SMS / WhatsApp / WeChat).",
+  paidReminder: "This guest paid. Add him.",
+  helperWho: "Demo guest · 0400 000 222 (demo)",
   collected: "Collected this month",
   pendingDeposits: "Pending deposits",
   usage: (count) => `Used today ${count}`,

@@ -60,10 +60,27 @@ test("onboarding opens a scripted model desk and the public profile hides the de
   await expect(page).toHaveURL(/\/studio\/ops/);
   await expect(page.getByText("https://mrlootbox.com/wantang")).toBeVisible();
   await expect(page.getByRole("heading", { name: "运营" })).toBeVisible();
-  await expect(page.getByText("现在有空吗？想约一次。")).toBeVisible();
-  await expect(page.getByText("周四晚上可以。私人晚宴。")).toBeVisible();
+  const guest = page.getByRole("region", { name: "客人看到的" });
+  await expect(guest.getByText("现在有空吗？想约一次。")).toBeVisible();
+  await expect(guest.getByText("周四晚上可以。私人晚宴。")).toHaveCount(0);
+  await expect(page.getByText("可一键发")).toBeVisible();
+  await page.getByRole("button", { name: "发送" }).click();
+  await expect(guest.getByText("正在输入…")).toBeVisible();
+  await expect(guest.getByText("周四晚上可以。私人晚宴。")).toHaveCount(0);
+  await expect(guest.getByText("周四晚上可以。私人晚宴。")).toBeVisible({ timeout: 12000 });
+  await page.getByRole("button", { name: "发送" }).click();
+  await expect(page.getByText("需本人回复")).toBeVisible();
+  await expect(guest.getByText("需本人回复")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "发送" })).toBeDisabled();
+  await page.getByRole("button", { name: "本人确认" }).click();
+  await expect(page.getByRole("button", { name: "发送" })).toBeEnabled();
+  await page.getByRole("button", { name: "发送" }).click();
   await expect(page.getByText("待付订金")).toBeVisible();
   await page.getByRole("button", { name: "已收款" }).click();
+  await expect(page.getByText("已解锁，转她私域（短信/WhatsApp/微信）")).toBeVisible();
+  await expect(page.getByText("这位客人已付款，加他")).toBeVisible();
+  await expect(page.getByRole("region", { name: "客人看到的" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "发送" })).toHaveCount(0);
   await expect(page.getByText("0400 000 222（演示）")).toBeVisible();
   await expect(page.getByText("账本记入 PayID 订金 A$100（演示）")).toBeVisible();
   await expect(page.getByText("A$100").first()).toBeVisible();
@@ -118,9 +135,25 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
   await expect(page).toHaveURL(/\/studio\/ops/);
   await expect(page.getByText("https://mrlootbox.com/wantang?lang=en")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Operations" })).toBeVisible();
-  await expect(page.getByText("Thursday evening works.")).toBeVisible();
+  const guest = page.getByRole("region", { name: "What the guest sees" });
+  await expect(guest.getByText("Thursday evening works.")).toHaveCount(0);
+  await expect(page.getByText("One tap")).toBeVisible();
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(guest.getByText("typing…")).toBeVisible();
+  await expect(guest.getByText("Thursday evening works.")).toHaveCount(0);
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByText("Needs her reply")).toBeVisible();
+  await expect(guest.getByText("Needs her reply")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "I'll send this" }).click();
+  await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByText("Deposit pending")).toBeVisible();
   await page.getByRole("button", { name: "Payment received" }).click();
+  await expect(
+    page.getByText("Unlocked. Move him to her private channel (SMS / WhatsApp / WeChat)."),
+  ).toBeVisible();
+  await expect(page.getByText("This guest paid. Add him.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "What the guest sees" })).toHaveCount(0);
   await expect(page.getByText("0400 000 222 (demo)")).toBeVisible();
   await expect(page.getByText("Ledger records the PayID deposit A$100 (demo)")).toBeVisible();
   await page.getByRole("button", { name: "Top up" }).click();
@@ -152,6 +185,18 @@ test("the operations screen shows the agent working without a click", async ({ p
   });
   await expect(page.locator("[aria-busy=true]")).toBeVisible({ timeout: 3000 });
   await expect(page.getByText("Reading her profile")).toBeVisible();
+});
+
+test("a sensitive reply stays unsent until she edits it", async ({ page }) => {
+  await page.goto("/studio/ops");
+  await page.getByRole("button", { name: "发送" }).click();
+  await page.getByRole("button", { name: "发送" }).click();
+  await expect(page.getByRole("button", { name: "发送" })).toBeDisabled();
+  await page.getByRole("button", { name: "改一下" }).click();
+  await page.getByLabel("改一下").fill("先付一百，到了再说。");
+  await expect(page.getByRole("button", { name: "发送" })).toBeEnabled();
+  const guest = await page.getByRole("region", { name: "客人看到的" }).innerText();
+  expect(guest).not.toMatch(/\bAI\b|\bbot\b|机器人/);
 });
 
 test("the model can top up a demo credit balance", async ({ page }) => {
