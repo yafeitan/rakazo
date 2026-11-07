@@ -7,6 +7,7 @@ import { formatAud } from "../domain";
 import { useLocale } from "../locale";
 import { useDemo } from "../shell";
 import { AhaPlay } from "./aha";
+import { CreditTopUp } from "./top-up";
 
 type Ledger = { days: { date: string; amount: number }[]; total: number; today: number };
 
@@ -233,6 +234,7 @@ export function DashboardPage() {
             <span className="mt-1 block text-label">{copy.usageBand}</span>
           </p>
         </div>
+        <CreditTopUp />
         {data.heldLabel ? (
           <p className="text-muted-foreground">{copy.held(data.heldLabel)}</p>
         ) : null}

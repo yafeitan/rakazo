@@ -77,6 +77,18 @@ export type Copy = {
   payment: string;
   book: string;
   desk: string;
+  demoBalance: string;
+  topUp: string;
+  topUpTitle: string;
+  topUpOther: string;
+  customAmount: string;
+  topUpMin: string;
+  topUpCredit: string;
+  topUpDue: string;
+  topUpPay: (amount: string) => string;
+  topUpDone: string;
+  topUpClose: string;
+  topUpDemo: string;
   ahaGuest: string;
   ahaReply: string;
   ahaSteps: readonly [string, string, string];
@@ -173,6 +185,18 @@ const zh: Copy = {
   payment: "收款",
   book: "预约",
   desk: "模特后台",
+  demoBalance: "演示余额",
+  topUp: "充值",
+  topUpTitle: "充值额度",
+  topUpOther: "其他",
+  customAmount: "其他金额",
+  topUpMin: "至少 A$50",
+  topUpCredit: "将增加的额度",
+  topUpDue: "应付",
+  topUpPay: (amount) => `现在支付 ${amount}`,
+  topUpDone: "已记入演示余额",
+  topUpClose: "完成",
+  topUpDemo: "演示，不会扣款。",
   ahaGuest: "周四晚上还有空吗？想约一次私人晚宴。",
   ahaReply:
     "周四到周日傍晚之后可以。私人晚宴可以安排。请先用 PayID 付 A$100 订金（演示）。到账后我再发联系方式。",
@@ -280,6 +304,18 @@ const en: Copy = {
   payment: "Payment",
   book: "Book",
   desk: "Model desk",
+  demoBalance: "Demo balance",
+  topUp: "Top up",
+  topUpTitle: "Top up credits",
+  topUpOther: "Other",
+  customAmount: "Custom amount",
+  topUpMin: "At least A$50",
+  topUpCredit: "Credit to add",
+  topUpDue: "Total due",
+  topUpPay: (amount) => `Pay ${amount} now`,
+  topUpDone: "Added to the demo balance",
+  topUpClose: "Done",
+  topUpDemo: "Demo. No charge.",
   ahaGuest: "Are you free Thursday evening? I’d like a private dinner.",
   ahaReply:
     "Thursday to Sunday, after dusk, works. A private dinner is fine. Please send the A$100 PayID deposit first (demo). I’ll send contact details once it arrives.",

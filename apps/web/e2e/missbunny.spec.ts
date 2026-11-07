@@ -132,3 +132,26 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
   await expect(page.getByText("0400 000 222 (demo)")).toBeVisible();
   await expect(page.getByText("Ledger records the PayID deposit A$100 (demo)")).toBeVisible();
 });
+
+test("the model can top up a demo credit balance", async ({ page }) => {
+  await page.goto("/demo");
+  await page.getByRole("button", { name: "以模特查看引擎" }).click();
+  await page.getByRole("button", { name: "充值" }).click();
+  await expect(page.getByRole("heading", { name: "充值额度" })).toBeVisible();
+  await page.getByRole("button", { name: "其他" }).click();
+  await page.getByLabel("其他金额").fill("20");
+  await expect(page.getByText("至少 A$50")).toBeVisible();
+  await expect(page.getByRole("button", { name: /现在支付/ })).toBeDisabled();
+  await page.getByLabel("其他金额").fill("80");
+  await page.getByRole("button", { name: "现在支付 A$80" }).click();
+  await expect(page.getByText("已记入演示余额 A$80")).toBeVisible();
+  await page.getByRole("button", { name: "完成" }).click();
+  await expect(page.getByText("A$80", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "EN", exact: true }).click();
+  await page.getByRole("button", { name: "Top up" }).click();
+  await expect(page.getByRole("heading", { name: "Top up credits" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pay A$80 now" })).toBeEnabled();
+  await expect(page.getByText("Credit to add")).toBeVisible();
+  await expect(page.getByText("Total due")).toBeVisible();
+});
