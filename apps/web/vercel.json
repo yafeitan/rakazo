@@ -22,11 +22,5 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],
-  "rewrites": [
-    { "source": "/studio", "destination": "/studio.html" },
-    { "source": "/studio/:path*", "destination": "/studio.html" },
-    { "source": "/app", "destination": "/studio.html" },
-    { "source": "/app/:path*", "destination": "/studio.html" },
-    { "source": "/models/:path*", "destination": "/studio.html" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/studio.html" }]
 }
