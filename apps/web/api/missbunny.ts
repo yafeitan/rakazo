@@ -1,5 +1,3 @@
-import { handleMissbunny } from "../src/missbunny/server/http";
-
 type NodeRequest = {
   method?: string;
   url?: string;
@@ -49,6 +47,7 @@ async function send(res: NodeResponse, response: Response) {
 /** Vercel calls this with a Node request and response. */
 export default async function handler(req: Request | NodeRequest, res?: NodeResponse) {
   try {
+    const { handleMissbunny } = await import("../src/missbunny/server/http");
     const response = isWebRequest(req)
       ? await handleMissbunny(req)
       : await handleMissbunny(await fromNode(req));
@@ -56,7 +55,8 @@ export default async function handler(req: Request | NodeRequest, res?: NodeResp
     await send(res, response);
     return;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "failed";
+    const message =
+      error instanceof Error ? `${error.message}\n${error.stack ?? ""}`.slice(0, 1200) : "failed";
     if (!res) return Response.json({ error: message }, { status: 500 });
     res.statusCode = 500;
     res.setHeader("content-type", "application/json; charset=utf-8");
