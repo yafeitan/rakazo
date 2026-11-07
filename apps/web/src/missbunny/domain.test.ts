@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  acknowledgeInquiry,
   assess,
+  bookInquiry,
   completeOrder,
   confirmReceived,
   createOrder,
+  dashboard,
   disputeOrder,
   draftFromProfile,
   emptyDraft,
   ledger,
   listOrders,
   markPaid,
+  presentInquiry,
   presentOrder,
+  replyFromProfile,
   searchProfiles,
   setRole,
   simulateTimeout,
@@ -161,6 +166,49 @@ describe("missbunny orders", () => {
     if (!ali || !live) throw new Error("missing");
     expect(ledger(ali).total).toBe(0);
     expect(ledger(live).total).toBeGreaterThan(0);
+  });
+
+  it("answers only from the profile and flags everything else", () => {
+    const state = seedState();
+    const model = state.profiles.find((profile) => profile.id === "wantang");
+    if (!model) throw new Error("missing");
+    const time = replyFromProfile(model, "availability");
+    expect(time.needsConfirm).toBe(false);
+    expect(time.draft).toContain(model.availability);
+    expect(time.draft).not.toContain("wx-");
+    const price = replyFromProfile(model, "price");
+    const agency = replyFromProfile(model, "agency");
+    expect(price).toEqual({ draft: "", needsConfirm: true });
+    expect(agency).toEqual({ draft: "", needsConfirm: true });
+    const shown = presentInquiry(state.inquiries.find((item) => item.id === "lead-price")!);
+    expect(shown.draft).toBe("");
+    expect(shown.label).toBe("需要你确认");
+    const view = dashboard(setRole(state, "model", "wantang") ?? state);
+    if (!view) throw new Error("dashboard");
+    const { profile: _profile, ...rest } = view;
+    const text = JSON.stringify(rest);
+    expect(text).toContain("只用你资料里的内容回答，不编");
+    expect(text).not.toContain("wx-wantang-private");
+    expect(text).not.toContain("payid-wantang-private");
+    expect(view?.pricing.monthly).toBe(500);
+    expect(view?.pricing.token).toBeGreaterThanOrEqual(view?.pricing.tokenLow ?? 0);
+    expect(view?.pricing.token).toBeLessThanOrEqual(view?.pricing.tokenHigh ?? 0);
+  });
+
+  it("turns a drafted inquiry into a pending booking without releasing contacts", () => {
+    const asModel = setRole(seedState(), "model", "wantang");
+    if (!asModel) throw new Error("role");
+    const booked = bookInquiry(asModel, "lead-time");
+    if (!booked.ok) throw new Error(booked.error);
+    const order = booked.state.orders.find((item) => item.id === booked.orderId);
+    if (!order) throw new Error("missing order");
+    expect(order.status).toBe("PENDING_PAYMENT");
+    expect(presentOrder(booked.state, order, true)?.contacts).toBeNull();
+    expect(bookInquiry(asModel, "lead-price").ok).toBe(false);
+    const seen = acknowledgeInquiry(asModel, "lead-price");
+    const gap = seen?.inquiries.find((item) => item.id === "lead-price");
+    expect(gap?.draft).toBe("");
+    expect(gap?.status).toBe("handed_off");
   });
 
   it("does not leak contact markers in a pending order view", () => {

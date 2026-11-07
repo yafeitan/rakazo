@@ -86,6 +86,34 @@ export type EngineEntry = {
   text: string;
 };
 
+export type InquiryTopic = "availability" | "city" | "services" | "price" | "agency";
+
+export type InquiryStatus = "drafted" | "needs_model" | "handed_off" | "booked";
+
+export type Inquiry = {
+  id: string;
+  profileId: string;
+  guestName: string;
+  topic: InquiryTopic;
+  question: string;
+  draft: string;
+  needsConfirm: boolean;
+  status: InquiryStatus;
+  orderId: string;
+  at: string;
+};
+
+/** Shown on the model's feed. The reply underneath may only quote her profile. */
+export const ANSWER_BADGE = "只用你资料里的内容回答，不编";
+export const NEEDS_CONFIRM = "需要你确认";
+
+/** Demo monthly cost: model usage in the stated band, plus a tool fee. */
+export const MONTHLY_TOKEN = 420;
+export const MONTHLY_TOKEN_LOW = 300;
+export const MONTHLY_TOKEN_HIGH = 600;
+export const MONTHLY_TOOL = 80;
+export const MONTHLY_FEE = MONTHLY_TOKEN + MONTHLY_TOOL;
+
 export type Session = {
   role: "user" | "model";
   userId: string;
@@ -100,6 +128,7 @@ export type DemoState = {
   orders: Order[];
   audits: AuditEntry[];
   engineLog: EngineEntry[];
+  inquiries: Inquiry[];
 };
 
 export type PublicProfile = {
@@ -374,6 +403,51 @@ export function ledger(
 
 export function formatAud(amount: number): string {
   return `A$${amount.toLocaleString("en-AU")}`;
+}
+
+/** A reply may quote city, services, or availability. Anything else waits for her. */
+export function replyFromProfile(
+  profile: Pick<Profile, "city" | "services" | "availability">,
+  topic: InquiryTopic,
+): { draft: string; needsConfirm: boolean } {
+  if (topic === "availability" && profile.availability.trim()) {
+    return { draft: `可约：${profile.availability.trim()}`, needsConfirm: false };
+  }
+  if (topic === "city" && profile.city.trim()) {
+    return { draft: `在${profile.city.trim()}独立工作。`, needsConfirm: false };
+  }
+  if (topic === "services" && profile.services.trim().length >= 8) {
+    return { draft: profile.services.trim(), needsConfirm: false };
+  }
+  return { draft: "", needsConfirm: true };
+}
+
+export function presentInquiry(inquiry: Inquiry) {
+  return {
+    id: inquiry.id,
+    guestName: inquiry.guestName,
+    question: inquiry.question,
+    draft: inquiry.needsConfirm ? "" : inquiry.draft,
+    needsConfirm: inquiry.needsConfirm,
+    status: inquiry.status,
+    orderId: inquiry.orderId,
+    label: inquiry.needsConfirm
+      ? NEEDS_CONFIRM
+      : inquiry.status === "booked"
+        ? "已变成预约"
+        : "已起草",
+  };
+}
+
+export function pricingQuote(recentIncome: number) {
+  return {
+    token: MONTHLY_TOKEN,
+    tokenLow: MONTHLY_TOKEN_LOW,
+    tokenHigh: MONTHLY_TOKEN_HIGH,
+    tool: MONTHLY_TOOL,
+    monthly: MONTHLY_FEE,
+    recentIncome,
+  };
 }
 
 function profileById(state: DemoState, id: string): Profile | undefined {
@@ -688,18 +762,93 @@ export function ownProfile(state: DemoState): Profile | null {
     : null;
 }
 
+function ownInquiry(state: DemoState, id: string): Inquiry | undefined {
+  if (state.session.role !== "model") return undefined;
+  return state.inquiries.find(
+    (inquiry) => inquiry.id === id && inquiry.profileId === state.session.modelId,
+  );
+}
+
+/** She has seen a question the profile cannot answer. The draft stays empty. */
+export function acknowledgeInquiry(state: DemoState, id: string): DemoState | null {
+  const inquiry = ownInquiry(state, id);
+  if (!inquiry) return null;
+  if (inquiry.status !== "needs_model") return null;
+  return {
+    ...state,
+    inquiries: state.inquiries.map((item) =>
+      item.id === id ? { ...item, status: "handed_off", draft: "", needsConfirm: true } : item,
+    ),
+  };
+}
+
+/** Turns a simulated inquiry into a pending booking. Contacts stay off the order. */
+export function bookInquiry(
+  state: DemoState,
+  id: string,
+  now = new Date(),
+): { ok: true; state: DemoState; orderId: string } | { ok: false; error: string } {
+  const inquiry = ownInquiry(state, id);
+  if (!inquiry) return { ok: false, error: "找不到这条询问" };
+  if (inquiry.needsConfirm && inquiry.status === "needs_model") {
+    return { ok: false, error: NEEDS_CONFIRM };
+  }
+  if (inquiry.status === "booked") return { ok: false, error: "已经变成预约" };
+  const profile = profileById(state, inquiry.profileId);
+  const method = profile?.paymentMethods[0];
+  if (!profile || !method) return { ok: false, error: "至少设置一种收款方式" };
+  const order: Order = {
+    id: createId("order"),
+    profileId: profile.id,
+    userId: DEMO_USER_ID,
+    startsAt: "周四 19:00",
+    paymentMethodId: method.id,
+    status: "PENDING_PAYMENT",
+    note: "演示询问",
+    screenshotAttached: false,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  };
+  const audit: AuditEntry = {
+    id: createId("audit"),
+    orderId: order.id,
+    at: now.toISOString(),
+    actor: "model",
+    action: "询问交给预约",
+  };
+  return {
+    ok: true,
+    orderId: order.id,
+    state: {
+      ...state,
+      orders: [...state.orders, order],
+      audits: [...state.audits, audit],
+      inquiries: state.inquiries.map((item) =>
+        item.id === id ? { ...item, status: "booked", orderId: order.id } : item,
+      ),
+    },
+  };
+}
+
 export function dashboard(state: DemoState, now = new Date()) {
   const profile = ownProfile(state);
   if (!profile) return null;
   const assessment = assess(draftFromProfile(profile));
   const today = dayKey(now);
+  const books = ledger(profile, now);
   return {
     profile,
     assessment,
-    ledger: ledger(profile, now),
+    ledger: books,
+    pricing: pricingQuote(books.total),
+    heldLabel: profile.paymentMethods[0]?.label ?? "",
+    badge: ANSWER_BADGE,
     engineLog: state.engineLog.filter(
       (entry) => entry.profileId === profile.id && dayKey(new Date(entry.at)) === today,
     ),
+    inquiries: state.inquiries
+      .filter((inquiry) => inquiry.profileId === profile.id)
+      .map(presentInquiry),
     awaiting: listOrders(state).filter((order) => order.status === "AWAITING_MODEL_CONFIRM"),
     recent: listOrders(state).filter((order) => order.status !== "AWAITING_MODEL_CONFIRM"),
   };

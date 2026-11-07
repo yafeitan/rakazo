@@ -8,10 +8,33 @@ import { useDemo } from "../shell";
 
 type Ledger = { days: { date: string; amount: number }[]; total: number; today: number };
 
+type InquiryView = {
+  id: string;
+  guestName: string;
+  question: string;
+  draft: string;
+  needsConfirm: boolean;
+  status: string;
+  label: string;
+};
+
+type Pricing = {
+  token: number;
+  tokenLow: number;
+  tokenHigh: number;
+  tool: number;
+  monthly: number;
+  recentIncome: number;
+};
+
 type Dashboard = {
   assessment: Assessment;
   ledger: Ledger;
+  pricing: Pricing;
+  heldLabel: string;
+  badge: string;
   engineLog: { id: string; text: string }[];
+  inquiries: InquiryView[];
   awaiting: OrderView[];
   recent: OrderView[];
   stageName: string;
@@ -66,6 +89,20 @@ export function DashboardPage() {
     };
   }, [apply, shell.session.modelId, shell.session.role]);
 
+  async function lead(op: string, id: string) {
+    setPending(true);
+    setError(null);
+    try {
+      const body = await call<Dashboard>(op, { id });
+      apply(body.shell);
+      setData(body);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "没有完成");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function act(op: string, id: string) {
     setPending(true);
     setError(null);
@@ -119,20 +156,79 @@ export function DashboardPage() {
               {formatAud(data.ledger.today)}
             </p>
           </div>
-          <p className="text-muted-foreground">
-            近七日 {formatAud(data.ledger.total)}
-            <span className="mt-1 block text-label">演示账本</span>
-          </p>
+          <p className="text-label text-muted-foreground">演示账本</p>
         </div>
         <Bars days={data.ledger.days} />
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <SectionHeading as="h2">月费</SectionHeading>
+            <p className="mt-2 text-body-lg font-medium">{formatAud(data.pricing.monthly)}</p>
+          </div>
+          <p className="text-right text-muted-foreground">
+            近七日入账 {formatAud(data.pricing.recentIncome)}
+            <span className="mt-1 block text-label">
+              AI 用量 {formatAud(data.pricing.token)}（大约 A${data.pricing.tokenLow}–
+              {data.pricing.tokenHigh}）· 工具 {formatAud(data.pricing.tool)} · 演示
+            </span>
+          </p>
+        </div>
+        {data.heldLabel ? (
+          <p className="text-muted-foreground">入账进入她配置的 {data.heldLabel}（演示）</p>
+        ) : null}
       </section>
       <section className="flex flex-col gap-3">
-        <SectionHeading as="h2">今日引擎</SectionHeading>
-        <ul className="flex flex-col gap-2 text-muted-foreground">
-          {data.engineLog.map((entry) => (
-            <li key={entry.id}>{entry.text}</li>
-          ))}
-        </ul>
+        <SectionHeading as="h2">今日</SectionHeading>
+        <p className="text-label text-muted-foreground">{data.badge}</p>
+        {data.engineLog.length > 0 ? (
+          <ul className="flex flex-col gap-2 text-muted-foreground">
+            {data.engineLog.map((entry) => (
+              <li key={entry.id}>{entry.text}</li>
+            ))}
+          </ul>
+        ) : null}
+        {data.inquiries.map((inquiry) => (
+          <div
+            key={inquiry.id}
+            className="flex flex-col gap-2 rounded-xl px-4 py-4 ring-1 ring-foreground/10"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="font-medium">{inquiry.guestName}</span>
+              <span className="text-muted-foreground">{inquiry.label}</span>
+            </div>
+            <p>{inquiry.question}</p>
+            {inquiry.draft ? <p className="text-muted-foreground">{inquiry.draft}</p> : null}
+            {inquiry.status === "drafted" ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => void lead("bookLead", inquiry.id)}
+              >
+                交给预约
+              </Button>
+            ) : null}
+            {inquiry.status === "needs_model" ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => void lead("acknowledge", inquiry.id)}
+              >
+                我来确认
+              </Button>
+            ) : null}
+            {inquiry.status === "handed_off" ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => void lead("bookLead", inquiry.id)}
+              >
+                交给预约
+              </Button>
+            ) : null}
+          </div>
+        ))}
       </section>
       <section className="flex flex-col gap-3">
         <SectionHeading as="h2">待确认</SectionHeading>

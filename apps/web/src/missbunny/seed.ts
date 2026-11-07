@@ -1,5 +1,5 @@
-import type { AuditEntry, DemoState, EngineEntry, Order, Profile } from "./domain";
-import { DEMO_USER_ID, DEMO_USER_NAME } from "./domain";
+import type { AuditEntry, DemoState, EngineEntry, Inquiry, Order, Profile } from "./domain";
+import { DEMO_USER_ID, DEMO_USER_NAME, replyFromProfile } from "./domain";
 
 export const PRIVATE_MARKERS = [
   "wx-wantang-private",
@@ -170,9 +170,51 @@ export function seedState(now = new Date()): DemoState {
     profiles: [wantang, chengyue, ali],
     orders,
     audits,
-    engineLog: [
-      ...lines("wantang", ["阅读了档案", "发布了主页", "把一位预约放进待确认", "更新了账本"], at),
-      ...lines("chengyue", ["核对了可约时间", "主页保持可浏览"], at),
-    ],
+    engineLog: [...lines("chengyue", ["核对了可约时间", "主页保持可浏览"], at)],
+    inquiries: inquiriesFor(wantang, at),
   };
+}
+
+function inquiriesFor(profile: Profile, at: string): Inquiry[] {
+  const time = replyFromProfile(profile, "availability");
+  const visit = replyFromProfile(profile, "services");
+  const price = replyFromProfile(profile, "price");
+  return [
+    {
+      id: "lead-time",
+      profileId: profile.id,
+      guestName: "周宁（演示）",
+      topic: "availability",
+      question: "周四晚上还有空吗？",
+      draft: time.draft,
+      needsConfirm: time.needsConfirm,
+      status: "drafted",
+      orderId: "",
+      at,
+    },
+    {
+      id: "lead-price",
+      profileId: profile.id,
+      guestName: "林可（演示）",
+      topic: "price",
+      question: "今晚怎么收费？",
+      draft: price.draft,
+      needsConfirm: price.needsConfirm,
+      status: "needs_model",
+      orderId: "",
+      at,
+    },
+    {
+      id: "lead-booked",
+      profileId: profile.id,
+      guestName: "陈予安（演示）",
+      topic: "services",
+      question: "想约一次晚宴陪同。",
+      draft: visit.draft,
+      needsConfirm: visit.needsConfirm,
+      status: "booked",
+      orderId: "order-confirmed",
+      at,
+    },
+  ];
 }

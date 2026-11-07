@@ -8,7 +8,7 @@ const STEPS = [
   "预约时输入邀请码 MB-DEMO。",
   "选择时间，以及她自己配置的收款方式。",
   "你点「我已付款」后，她确认到账，联系方式才会出现。",
-  "右上角切换到模特，看引擎核验、今日账本，和待确认的订单。",
+  "右上角切换到模特，看今日询问、账本和月费。",
   "待付款订单里可以用「模拟超时」；她可以点「未收到」。",
 ];
 
@@ -26,7 +26,7 @@ export function DemoPage() {
     <div className="mx-auto flex max-w-xl flex-col items-center pt-10 text-center">
       <h1 className="text-display font-medium tracking-tight">missbunny</h1>
       <p className="mt-4 text-body-lg text-muted-foreground">
-        只服务澳洲独立模特。私人、克制、由你决定。
+        只服务澳洲的独立模特，不服务经纪公司。私人、克制、由你决定。
       </p>
       <ol className="mt-10 w-full space-y-3 text-left text-body">
         {STEPS.map((step, index) => (

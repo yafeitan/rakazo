@@ -31,6 +31,7 @@ export function decodeState(token: string | null | undefined): DemoState {
     if (!parsed.session || !Array.isArray(parsed.profiles) || !Array.isArray(parsed.orders)) {
       return seedState();
     }
+    if (!Array.isArray(parsed.inquiries)) parsed.inquiries = [];
     return parsed;
   } catch {
     return seedState();

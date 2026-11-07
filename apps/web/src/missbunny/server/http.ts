@@ -1,7 +1,9 @@
 import type { DemoState, ProfileDraft } from "../domain";
 import {
   acceptInvite,
+  acknowledgeInquiry,
   applyTimeouts,
+  bookInquiry,
   checkout,
   commitEngine,
   completeOrder,
@@ -110,17 +112,23 @@ async function dispatch(
     return { stream: true, state, draft };
   }
   if (op === "dashboard") {
-    const view = dashboard(state);
-    if (!view) return fail(state, "请切换到模特", 403);
-    const { profile, ...rest } = view;
-    return json(state, {
-      ...rest,
-      stageName: profile.stageName,
-      city: profile.city,
-      published: profile.published,
-      engineStarted: profile.engineStarted,
-      photoCount: profile.photoCount,
-    });
+    const payload = dashboardPayload(state);
+    if (!payload) return fail(state, "请切换到模特", 403);
+    return json(state, payload);
+  }
+  if (op === "acknowledge") {
+    const next = acknowledgeInquiry(state, stringField(body.id));
+    if (!next) return fail(state, "这条询问不能这样处理", 409);
+    const payload = dashboardPayload(next);
+    if (!payload) return fail(next, "请切换到模特", 403);
+    return json(next, payload);
+  }
+  if (op === "bookLead") {
+    const booked = bookInquiry(state, stringField(body.id));
+    if (!booked.ok) return fail(state, booked.error, 409);
+    const payload = dashboardPayload(booked.state);
+    if (!payload) return fail(booked.state, "请切换到模特", 403);
+    return json(booked.state, payload);
   }
   if (op === "orders") return json(state, { orders: listOrders(state) });
   if (op === "order") {
@@ -163,6 +171,20 @@ async function dispatch(
   const order = mutated.orders.find((item) => item.id === orderId);
   const view = order ? presentOrder(mutated, order, true) : null;
   return json(mutated, { order: view });
+}
+
+function dashboardPayload(state: DemoState) {
+  const view = dashboard(state);
+  if (!view) return null;
+  const { profile, ...rest } = view;
+  return {
+    ...rest,
+    stageName: profile.stageName,
+    city: profile.city,
+    published: profile.published,
+    engineStarted: profile.engineStarted,
+    photoCount: profile.photoCount,
+  };
 }
 
 function delay(ms: number): Promise<void> {

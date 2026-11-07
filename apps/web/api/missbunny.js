@@ -6,6 +6,13 @@ var DEMO_USER_ID = "demo-guest";
 var DEMO_USER_NAME = "\u9648\u4E88\u5B89";
 var CITIES = ["\u58A8\u5C14\u672C", "\u6089\u5C3C", "\u5E03\u91CC\u65AF\u73ED", "\u73C0\u65AF", "\u963F\u5FB7\u83B1\u5FB7"];
 var LANGUAGES = ["\u4E2D\u6587", "English", "\u7CA4\u8BED", "\u65E5\u672C\u8A9E"];
+var ANSWER_BADGE = "\u53EA\u7528\u4F60\u8D44\u6599\u91CC\u7684\u5185\u5BB9\u56DE\u7B54\uFF0C\u4E0D\u7F16";
+var NEEDS_CONFIRM = "\u9700\u8981\u4F60\u786E\u8BA4";
+var MONTHLY_TOKEN = 420;
+var MONTHLY_TOKEN_LOW = 300;
+var MONTHLY_TOKEN_HIGH = 600;
+var MONTHLY_TOOL = 80;
+var MONTHLY_FEE = MONTHLY_TOKEN + MONTHLY_TOOL;
 var STATUS_LABEL = {
   PENDING_PAYMENT: "\u5F85\u4ED8\u6B3E",
   AWAITING_MODEL_CONFIRM: "\u5F85\u786E\u8BA4\u5230\u8D26",
@@ -179,6 +186,40 @@ function ledger(profile, now = /* @__PURE__ */ new Date()) {
   }
   const total = days.reduce((sum, day) => sum + day.amount, 0);
   return { days, total, today: days.at(-1)?.amount ?? 0 };
+}
+function replyFromProfile(profile, topic) {
+  if (topic === "availability" && profile.availability.trim()) {
+    return { draft: `\u53EF\u7EA6\uFF1A${profile.availability.trim()}`, needsConfirm: false };
+  }
+  if (topic === "city" && profile.city.trim()) {
+    return { draft: `\u5728${profile.city.trim()}\u72EC\u7ACB\u5DE5\u4F5C\u3002`, needsConfirm: false };
+  }
+  if (topic === "services" && profile.services.trim().length >= 8) {
+    return { draft: profile.services.trim(), needsConfirm: false };
+  }
+  return { draft: "", needsConfirm: true };
+}
+function presentInquiry(inquiry) {
+  return {
+    id: inquiry.id,
+    guestName: inquiry.guestName,
+    question: inquiry.question,
+    draft: inquiry.needsConfirm ? "" : inquiry.draft,
+    needsConfirm: inquiry.needsConfirm,
+    status: inquiry.status,
+    orderId: inquiry.orderId,
+    label: inquiry.needsConfirm ? NEEDS_CONFIRM : inquiry.status === "booked" ? "\u5DF2\u53D8\u6210\u9884\u7EA6" : "\u5DF2\u8D77\u8349"
+  };
+}
+function pricingQuote(recentIncome) {
+  return {
+    token: MONTHLY_TOKEN,
+    tokenLow: MONTHLY_TOKEN_LOW,
+    tokenHigh: MONTHLY_TOKEN_HIGH,
+    tool: MONTHLY_TOOL,
+    monthly: MONTHLY_FEE,
+    recentIncome
+  };
 }
 function profileById(state, id) {
   return state.profiles.find((profile) => profile.id === id);
@@ -406,18 +447,82 @@ function ownProfile(state) {
     paymentMethods: profile.paymentMethods.map((method) => ({ ...method }))
   } : null;
 }
+function ownInquiry(state, id) {
+  if (state.session.role !== "model") return void 0;
+  return state.inquiries.find(
+    (inquiry) => inquiry.id === id && inquiry.profileId === state.session.modelId
+  );
+}
+function acknowledgeInquiry(state, id) {
+  const inquiry = ownInquiry(state, id);
+  if (!inquiry) return null;
+  if (inquiry.status !== "needs_model") return null;
+  return {
+    ...state,
+    inquiries: state.inquiries.map(
+      (item) => item.id === id ? { ...item, status: "handed_off", draft: "", needsConfirm: true } : item
+    )
+  };
+}
+function bookInquiry(state, id, now = /* @__PURE__ */ new Date()) {
+  const inquiry = ownInquiry(state, id);
+  if (!inquiry) return { ok: false, error: "\u627E\u4E0D\u5230\u8FD9\u6761\u8BE2\u95EE" };
+  if (inquiry.needsConfirm && inquiry.status === "needs_model") {
+    return { ok: false, error: NEEDS_CONFIRM };
+  }
+  if (inquiry.status === "booked") return { ok: false, error: "\u5DF2\u7ECF\u53D8\u6210\u9884\u7EA6" };
+  const profile = profileById(state, inquiry.profileId);
+  const method = profile?.paymentMethods[0];
+  if (!profile || !method) return { ok: false, error: "\u81F3\u5C11\u8BBE\u7F6E\u4E00\u79CD\u6536\u6B3E\u65B9\u5F0F" };
+  const order = {
+    id: createId("order"),
+    profileId: profile.id,
+    userId: DEMO_USER_ID,
+    startsAt: "\u5468\u56DB 19:00",
+    paymentMethodId: method.id,
+    status: "PENDING_PAYMENT",
+    note: "\u6F14\u793A\u8BE2\u95EE",
+    screenshotAttached: false,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  };
+  const audit = {
+    id: createId("audit"),
+    orderId: order.id,
+    at: now.toISOString(),
+    actor: "model",
+    action: "\u8BE2\u95EE\u4EA4\u7ED9\u9884\u7EA6"
+  };
+  return {
+    ok: true,
+    orderId: order.id,
+    state: {
+      ...state,
+      orders: [...state.orders, order],
+      audits: [...state.audits, audit],
+      inquiries: state.inquiries.map(
+        (item) => item.id === id ? { ...item, status: "booked", orderId: order.id } : item
+      )
+    }
+  };
+}
 function dashboard(state, now = /* @__PURE__ */ new Date()) {
   const profile = ownProfile(state);
   if (!profile) return null;
   const assessment = assess(draftFromProfile(profile));
   const today = dayKey(now);
+  const books = ledger(profile, now);
   return {
     profile,
     assessment,
-    ledger: ledger(profile, now),
+    ledger: books,
+    pricing: pricingQuote(books.total),
+    heldLabel: profile.paymentMethods[0]?.label ?? "",
+    badge: ANSWER_BADGE,
     engineLog: state.engineLog.filter(
       (entry) => entry.profileId === profile.id && dayKey(new Date(entry.at)) === today
     ),
+    inquiries: state.inquiries.filter((inquiry) => inquiry.profileId === profile.id).map(presentInquiry),
     awaiting: listOrders(state).filter((order) => order.status === "AWAITING_MODEL_CONFIRM"),
     recent: listOrders(state).filter((order) => order.status !== "AWAITING_MODEL_CONFIRM")
   };
@@ -627,11 +732,52 @@ function seedState(now = /* @__PURE__ */ new Date()) {
     profiles: [wantang, chengyue, ali],
     orders,
     audits,
-    engineLog: [
-      ...lines("wantang", ["\u9605\u8BFB\u4E86\u6863\u6848", "\u53D1\u5E03\u4E86\u4E3B\u9875", "\u628A\u4E00\u4F4D\u9884\u7EA6\u653E\u8FDB\u5F85\u786E\u8BA4", "\u66F4\u65B0\u4E86\u8D26\u672C"], at),
-      ...lines("chengyue", ["\u6838\u5BF9\u4E86\u53EF\u7EA6\u65F6\u95F4", "\u4E3B\u9875\u4FDD\u6301\u53EF\u6D4F\u89C8"], at)
-    ]
+    engineLog: [...lines("chengyue", ["\u6838\u5BF9\u4E86\u53EF\u7EA6\u65F6\u95F4", "\u4E3B\u9875\u4FDD\u6301\u53EF\u6D4F\u89C8"], at)],
+    inquiries: inquiriesFor(wantang, at)
   };
+}
+function inquiriesFor(profile, at) {
+  const time = replyFromProfile(profile, "availability");
+  const visit = replyFromProfile(profile, "services");
+  const price = replyFromProfile(profile, "price");
+  return [
+    {
+      id: "lead-time",
+      profileId: profile.id,
+      guestName: "\u5468\u5B81\uFF08\u6F14\u793A\uFF09",
+      topic: "availability",
+      question: "\u5468\u56DB\u665A\u4E0A\u8FD8\u6709\u7A7A\u5417\uFF1F",
+      draft: time.draft,
+      needsConfirm: time.needsConfirm,
+      status: "drafted",
+      orderId: "",
+      at
+    },
+    {
+      id: "lead-price",
+      profileId: profile.id,
+      guestName: "\u6797\u53EF\uFF08\u6F14\u793A\uFF09",
+      topic: "price",
+      question: "\u4ECA\u665A\u600E\u4E48\u6536\u8D39\uFF1F",
+      draft: price.draft,
+      needsConfirm: price.needsConfirm,
+      status: "needs_model",
+      orderId: "",
+      at
+    },
+    {
+      id: "lead-booked",
+      profileId: profile.id,
+      guestName: "\u9648\u4E88\u5B89\uFF08\u6F14\u793A\uFF09",
+      topic: "services",
+      question: "\u60F3\u7EA6\u4E00\u6B21\u665A\u5BB4\u966A\u540C\u3002",
+      draft: visit.draft,
+      needsConfirm: visit.needsConfirm,
+      status: "booked",
+      orderId: "order-confirmed",
+      at
+    }
+  ];
 }
 
 // src/missbunny/server/store.ts
@@ -660,6 +806,7 @@ function decodeState(token) {
     if (!parsed.session || !Array.isArray(parsed.profiles) || !Array.isArray(parsed.orders)) {
       return seedState();
     }
+    if (!Array.isArray(parsed.inquiries)) parsed.inquiries = [];
     return parsed;
   } catch {
     return seedState();
@@ -742,17 +889,23 @@ async function dispatch(state, body) {
     return { stream: true, state, draft };
   }
   if (op === "dashboard") {
-    const view2 = dashboard(state);
-    if (!view2) return fail(state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
-    const { profile, ...rest } = view2;
-    return json(state, {
-      ...rest,
-      stageName: profile.stageName,
-      city: profile.city,
-      published: profile.published,
-      engineStarted: profile.engineStarted,
-      photoCount: profile.photoCount
-    });
+    const payload = dashboardPayload(state);
+    if (!payload) return fail(state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
+    return json(state, payload);
+  }
+  if (op === "acknowledge") {
+    const next = acknowledgeInquiry(state, stringField(body.id));
+    if (!next) return fail(state, "\u8FD9\u6761\u8BE2\u95EE\u4E0D\u80FD\u8FD9\u6837\u5904\u7406", 409);
+    const payload = dashboardPayload(next);
+    if (!payload) return fail(next, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
+    return json(next, payload);
+  }
+  if (op === "bookLead") {
+    const booked = bookInquiry(state, stringField(body.id));
+    if (!booked.ok) return fail(state, booked.error, 409);
+    const payload = dashboardPayload(booked.state);
+    if (!payload) return fail(booked.state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
+    return json(booked.state, payload);
   }
   if (op === "orders") return json(state, { orders: listOrders(state) });
   if (op === "order") {
@@ -784,6 +937,19 @@ async function dispatch(state, body) {
   const order = mutated.orders.find((item) => item.id === orderId);
   const view = order ? presentOrder(mutated, order, true) : null;
   return json(mutated, { order: view });
+}
+function dashboardPayload(state) {
+  const view = dashboard(state);
+  if (!view) return null;
+  const { profile, ...rest } = view;
+  return {
+    ...rest,
+    stageName: profile.stageName,
+    city: profile.city,
+    published: profile.published,
+    engineStarted: profile.engineStarted,
+    photoCount: profile.photoCount
+  };
 }
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
