@@ -7,6 +7,8 @@ test("missbunny opens the guest booking flows and the model dashboard", async ({
   await expect(page.getByText("运营系统")).toBeVisible();
   await expect(page.getByText("需要你确认")).toBeVisible();
   await expect(page.getByText("我们不经手。")).toBeVisible();
+  await expect(page.getByText("大约 A$300–600。")).toBeVisible();
+  await expect(page.getByText("工具费")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "继续" })).toBeDisabled();
   await page.getByRole("button", { name: "自运营" }).click();
   await expect(page.getByText("还没绑定 X")).toBeVisible();
@@ -38,5 +40,9 @@ test("missbunny opens the guest booking flows and the model dashboard", async ({
   await page.getByRole("button", { name: "以模特查看引擎" }).click();
   await expect(page.getByRole("heading", { name: "订金" })).toBeVisible();
   await expect(page.getByText("PayID A$100（演示）")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "月费" })).toBeVisible();
+  await expect(page.getByText("A$420")).toBeVisible();
+  await expect(page.getByText("工具费")).toHaveCount(0);
+  await expect(page.getByText("A$80")).toHaveCount(0);
   await expect(page.getByText("只用你资料里的内容回答，不编")).toBeVisible();
 });

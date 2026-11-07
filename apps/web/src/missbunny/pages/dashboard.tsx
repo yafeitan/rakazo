@@ -22,7 +22,6 @@ type Pricing = {
   token: number;
   tokenLow: number;
   tokenHigh: number;
-  tool: number;
   monthly: number;
   recentIncome: number;
 };
@@ -225,8 +224,7 @@ export function DashboardPage() {
           <p className="text-right text-muted-foreground">
             近七日入账 {formatAud(data.pricing.recentIncome)}
             <span className="mt-1 block text-label">
-              AI 用量 {formatAud(data.pricing.token)}（大约 A${data.pricing.tokenLow}–
-              {data.pricing.tokenHigh}）· 工具 {formatAud(data.pricing.tool)} · 演示
+              AI 用量，大约 A${data.pricing.tokenLow}–{data.pricing.tokenHigh} · 演示
             </span>
           </p>
         </div>

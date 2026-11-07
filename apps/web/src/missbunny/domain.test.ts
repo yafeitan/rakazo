@@ -220,9 +220,11 @@ describe("missbunny orders", () => {
     expect(text).toContain("只用你资料里的内容回答，不编");
     expect(text).not.toContain("wx-wantang-private");
     expect(text).not.toContain("payid-wantang-private");
-    expect(view?.pricing.monthly).toBe(500);
+    expect(view?.pricing.monthly).toBe(420);
+    expect(view?.pricing.monthly).toBe(view?.pricing.token);
     expect(view?.pricing.token).toBeGreaterThanOrEqual(view?.pricing.tokenLow ?? 0);
     expect(view?.pricing.token).toBeLessThanOrEqual(view?.pricing.tokenHigh ?? 0);
+    expect(view?.pricing).not.toHaveProperty("tool");
   });
 
   it("turns a drafted inquiry into a pending booking without releasing contacts", () => {

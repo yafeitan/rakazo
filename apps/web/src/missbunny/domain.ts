@@ -110,12 +110,11 @@ export type Inquiry = {
 export const ANSWER_BADGE = "只用你资料里的内容回答，不编";
 export const NEEDS_CONFIRM = "需要你确认";
 
-/** Demo monthly cost: model usage in the stated band, plus a tool fee. */
+/** Demo monthly cost: AI usage only, inside the stated band. Tools are included. */
 export const MONTHLY_TOKEN = 420;
 export const MONTHLY_TOKEN_LOW = 300;
 export const MONTHLY_TOKEN_HIGH = 600;
-export const MONTHLY_TOOL = 80;
-export const MONTHLY_FEE = MONTHLY_TOKEN + MONTHLY_TOOL;
+export const MONTHLY_FEE = MONTHLY_TOKEN;
 
 export type Session = {
   role: "user" | "model";
@@ -450,7 +449,6 @@ export function pricingQuote(recentIncome: number) {
     token: MONTHLY_TOKEN,
     tokenLow: MONTHLY_TOKEN_LOW,
     tokenHigh: MONTHLY_TOKEN_HIGH,
-    tool: MONTHLY_TOOL,
     monthly: MONTHLY_FEE,
     recentIncome,
   };
