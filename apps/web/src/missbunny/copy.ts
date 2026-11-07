@@ -866,7 +866,6 @@ export function localizeOrderView<T extends GuestOrder>(order: T, lang: Lang): T
       ? {
           ...order.payment,
           label: PAY_LABEL[order.payment.label] ?? order.payment.label,
-          accountName: NAMES[order.payment.accountName] ?? order.payment.accountName,
         }
       : null,
     audits: order.audits.map((entry) => ({

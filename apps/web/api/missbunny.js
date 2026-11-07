@@ -354,8 +354,7 @@ function localizeOrderView(order, lang) {
     paymentLabel,
     payment: order.payment ? {
       ...order.payment,
-      label: PAY_LABEL[order.payment.label] ?? order.payment.label,
-      accountName: NAMES[order.payment.accountName] ?? order.payment.accountName
+      label: PAY_LABEL[order.payment.label] ?? order.payment.label
     } : null,
     audits: order.audits.map((entry) => ({
       ...entry,
@@ -1454,8 +1453,7 @@ async function dispatch(state, body) {
       depositAmount: result.depositAmount,
       payid: result.payid ? {
         ...result.payid,
-        label: lang2 === "en" && result.payid.label === "\u94F6\u884C\u8F6C\u8D26" ? "Bank transfer" : result.payid.label,
-        accountName: lang2 === "en" ? profile.stageName : result.payid.accountName
+        label: lang2 === "en" && result.payid.label === "\u94F6\u884C\u8F6C\u8D26" ? "Bank transfer" : result.payid.label
       } : null
     });
   }

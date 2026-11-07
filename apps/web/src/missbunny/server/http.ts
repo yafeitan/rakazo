@@ -102,7 +102,6 @@ async function dispatch(
               lang === "en" && result.payid.label === "银行转账"
                 ? "Bank transfer"
                 : result.payid.label,
-            accountName: lang === "en" ? profile.stageName : result.payid.accountName,
           }
         : null,
     });
