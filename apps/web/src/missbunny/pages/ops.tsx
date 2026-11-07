@@ -7,9 +7,11 @@ import {
   Input,
   Label,
   SectionHeading,
+  Spinner,
 } from "@rakazo/ui-web";
-import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { call } from "../api";
 import { formatAud } from "../domain";
 import { useLocale } from "../locale";
 import type { WorkspaceDraft } from "../onboarding";
@@ -21,12 +23,31 @@ import { CreditTopUp } from "./top-up";
 const fieldClass = "mt-2 h-12 rounded-xl px-4 text-[16px]/6 md:text-body-lg";
 const DEPOSIT = 100;
 
+const SEEDED: Record<"zh" | "en", WorkspaceDraft> = {
+  zh: {
+    stageName: "晚棠",
+    city: "墨尔本",
+    availability: "周四至周日，傍晚之后",
+    services: "私人晚宴",
+    payment: "PayID",
+    binds: { x: true, ivy: false, catch: true },
+  },
+  en: {
+    stageName: "Wantang",
+    city: "Melbourne",
+    availability: "Thursday to Sunday, after dusk",
+    services: "Private dinners",
+    payment: "PayID",
+    binds: { x: true, ivy: true, catch: false },
+  },
+};
+
 function readWorkspace(lang: "zh" | "en"): WorkspaceDraft | null {
   try {
     const parsed = JSON.parse(sessionStorage.getItem(WORKSPACE_KEY) ?? "") as WorkspaceDraft;
     if (parsed.binds && workspaceReady(parsed, lang)) return parsed;
   } catch {
-    // A direct visit without the required platforms stays off this screen.
+    // A direct visit still runs on the seeded model.
   }
   return null;
 }
@@ -34,9 +55,10 @@ function readWorkspace(lang: "zh" | "en"): WorkspaceDraft | null {
 type FeedItem = { id: string; text: string };
 
 export function OpsPage() {
-  const { shell } = useDemo();
+  const { shell, apply } = useDemo();
   const { lang, copy } = useLocale();
-  const draft = useMemo(() => readWorkspace(lang), [lang]);
+  const saved = useMemo(() => readWorkspace(lang), [lang]);
+  const draft = saved ?? SEEDED[lang];
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [today, setToday] = useState<string[]>([]);
   const [orderReady, setOrderReady] = useState(false);
@@ -45,38 +67,65 @@ export function OpsPage() {
   const [editing, setEditing] = useState<"profile" | "schedule" | null>(null);
   const [draftText, setDraftText] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [index, setIndex] = useState(0);
+  const [loop, setLoop] = useState(0);
+  const [finished, setFinished] = useState<{ id: string; text: string; at: string }[]>([]);
+  const [tick, setTick] = useState(0);
+  const [typed, setTyped] = useState(1);
+  const guestShown = useRef(false);
+  const steps = copy.workSteps;
+  const current = steps[index] ?? steps[0] ?? "";
 
   useEffect(() => {
-    if (!draft) return;
-    const steps: { id: string; text: string; today: string; at: number; order?: boolean }[] = [
-      { id: "start", text: copy.startedWork, today: copy.startedWork, at: 300 },
-      { id: "guest", text: copy.guestAsk, today: copy.guestArrived, at: 900 },
-      { id: "reply", text: copy.agentReply(draft), today: copy.replied, at: 1700 },
-      { id: "qualify", text: copy.qualified, today: copy.qualified, at: 2300 },
-      {
-        id: "ask",
-        text: copy.agentDeposit(draft.payment),
-        today: copy.askedDeposit,
-        at: 2900,
-        order: true,
-      },
-    ];
-    const timers = steps.map((step) =>
-      window.setTimeout(() => {
-        setFeed((current) =>
-          current.some((item) => item.id === step.id)
-            ? current
-            : [...current, { id: step.id, text: step.text }],
-        );
-        setToday((current) => (current.includes(step.today) ? current : [...current, step.today]));
-        setUsed((count) => count + 1);
-        if (step.order) setOrderReady(true);
-      }, step.at),
-    );
+    if (shell.session.role === "model") return;
+    let active = true;
+    void call("session", { role: "model", modelId: "wantang" }).then((body) => {
+      if (active) apply(body.shell);
+    });
     return () => {
-      for (const timer of timers) window.clearTimeout(timer);
+      active = false;
     };
-  }, [copy, draft]);
+  }, [apply, shell.session.role]);
+
+  useEffect(() => {
+    setTick(0);
+    setTyped(1);
+    const typing = window.setInterval(() => setTyped((count) => count + 1), 40);
+    const ticking = window.setInterval(() => setTick((count) => count + 1), 200);
+    const wait = loop === 0 ? 2200 : 4800;
+    const advance = window.setTimeout(() => {
+      const at = new Date().toLocaleTimeString("en-GB", { hour12: false });
+      const text = steps[index] ?? "";
+      setFinished((list) => [{ id: `${loop}-${index}`, text, at }, ...list].slice(0, 8));
+      setToday((list) => [`${at} ${text}`, ...list].slice(0, 30));
+      setUsed((count) => count + 1);
+      if (index >= steps.length - 1) {
+        setLoop((count) => count + 1);
+        setIndex(0);
+      } else {
+        setIndex((currentIndex) => currentIndex + 1);
+      }
+    }, wait);
+    return () => {
+      window.clearInterval(typing);
+      window.clearInterval(ticking);
+      window.clearTimeout(advance);
+    };
+  }, [index, loop, steps]);
+
+  useEffect(() => {
+    if (guestShown.current || index < 4) return;
+    guestShown.current = true;
+    setFeed((currentFeed) => [
+      ...currentFeed,
+      { id: "guest", text: copy.guestAsk },
+      { id: "reply", text: copy.agentReply(draft) },
+    ]);
+  }, [copy, draft, index]);
+
+  useEffect(() => {
+    if (index >= 5) setOrderReady(true);
+  }, [index]);
 
   function log(text: string) {
     setFeed((current) => [...current, { id: `${text}-${current.length}`, text }]);
@@ -94,19 +143,44 @@ export function OpsPage() {
     setUsed((count) => count + 1);
   }
 
-  if (!draft) {
-    return <Navigate to={lang === "en" ? "/?lang=en" : "/"} replace />;
-  }
-  if (shell.session.role !== "model") {
-    return <p className="pt-8 text-muted-foreground">{copy.switchToModel}</p>;
-  }
   const publicUrl = publicProfileUrl("wantang", lang);
+  const shown = current.slice(0, typed);
 
   const collected = paid ? DEPOSIT : 0;
   const pending = orderReady && !paid ? DEPOSIT : 0;
 
   return (
     <div className="flex flex-col gap-8 pt-4">
+      {saved ? null : (
+        <p className="text-muted-foreground">
+          {copy.seedBanner}{" "}
+          <Link to={lang === "en" ? "/?lang=en" : "/"} className="underline">
+            {copy.seedLink}
+          </Link>
+        </p>
+      )}
+      <section aria-labelledby="working-now" className="flex flex-col gap-3">
+        <h2 id="working-now" className="text-heading3 font-medium">
+          {copy.workNow}
+        </h2>
+        <ul className="flex flex-col gap-2">
+          <li aria-busy="true" className="flex items-center gap-3">
+            <Spinner />
+            <span>
+              {shown}
+              <span className="animate-pulse">|</span>
+            </span>
+            <span className="text-muted-foreground">{tick}</span>
+          </li>
+          {finished.map((step) => (
+            <li key={step.id} className="flex items-center gap-3 text-muted-foreground">
+              <span aria-hidden>✓</span>
+              <span>{step.text}</span>
+              <time>{step.at}</time>
+            </li>
+          ))}
+        </ul>
+      </section>
       <header>
         <h1 className="text-heading3 font-medium">{copy.desk}</h1>
         <p className="mt-1 text-muted-foreground">

@@ -95,6 +95,10 @@ export type Copy = {
   bindOptional: string;
   marketRule: string;
   publicLink: string;
+  workNow: string;
+  workSteps: readonly string[];
+  seedBanner: string;
+  seedLink: string;
   collected: string;
   pendingDeposits: string;
   usage: (count: number) => string;
@@ -241,6 +245,19 @@ const zh: Copy = {
   bindOptional: "可选",
   marketRule: "中文市场要绑定 Catch 和 X。",
   publicLink: "她的公开链接",
+  workNow: "AI 正在做",
+  workSteps: [
+    "正在读她的档案",
+    "正在把公开主页写到 mrlootbox.com",
+    "正在准备今天的 X 帖子草稿",
+    "正在查看 Catch 和 X 的询问",
+    "正在回复一位客人",
+    "正在向客人要 PayID 订金",
+    "正在更新今天的时间",
+    "正在安排下一次推送",
+  ],
+  seedBanner: "这是演示模特，还没走入驻。",
+  seedLink: "去入驻",
   collected: "本月已收",
   pendingDeposits: "待收订金",
   usage: (count) => `今日用量 ${count}`,
@@ -399,6 +416,19 @@ const en: Copy = {
   bindOptional: "Optional",
   marketRule: "The English market requires Ivy and X.",
   publicLink: "Her public link",
+  workNow: "Agent working now",
+  workSteps: [
+    "Reading her profile",
+    "Writing her public profile at mrlootbox.com",
+    "Preparing today's X post draft",
+    "Checking Ivy and X inquiries",
+    "Replying to a guest",
+    "Requesting the PayID deposit",
+    "Updating today's schedule",
+    "Planning the next push",
+  ],
+  seedBanner: "This is a demo model, before onboarding.",
+  seedLink: "Fill in onboarding",
   collected: "Collected this month",
   pendingDeposits: "Pending deposits",
   usage: (count) => `Used today ${count}`,

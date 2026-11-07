@@ -140,6 +140,20 @@ test("a public profile stays off the operating system origin", async ({ page }) 
   expect(html).not.toContain("订金");
 });
 
+test("the operations screen shows the agent working without a click", async ({ page }) => {
+  await page.goto("/studio/ops");
+  await expect(page.getByRole("heading", { name: "AI 正在做" })).toBeVisible({ timeout: 3000 });
+  await expect(page.locator("[aria-busy=true]")).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("这是演示模特，还没走入驻。")).toBeVisible();
+
+  await page.goto("/studio/ops?lang=en");
+  await expect(page.getByRole("heading", { name: "Agent working now" })).toBeVisible({
+    timeout: 3000,
+  });
+  await expect(page.locator("[aria-busy=true]")).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("Reading her profile")).toBeVisible();
+});
+
 test("the model can top up a demo credit balance", async ({ page }) => {
   await page.goto("/home");
   await page.getByLabel("艺名").fill("晚棠");
