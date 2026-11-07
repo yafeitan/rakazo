@@ -1,0 +1,10 @@
+{
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @rakazo/web build:missbunny",
+  "outputDirectory": "dist-missbunny",
+  "framework": null,
+  "rewrites": [
+    { "source": "/p/:slug", "destination": "/api/missbunny?profile=:slug" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

@@ -3,14 +3,14 @@ import { createProvider } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 
 import { declaredVisionModelIds, inputModalities } from "./model-modalities.js";
-import { LOCAL_PROVIDER_ID, localModelIds } from "./pi-local-provider-id.js";
+import { LOCAL_PROVIDER_ID, localBaseUrl, localModelIds } from "./pi-local-provider-id.js";
 
 /**
  * Local OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, MLX).
  * The server is keyless, but `resolve` returns a placeholder because Models
  * hides providers with no resolvable auth.
  */
-export { LOCAL_PROVIDER_ID };
+export { LOCAL_PROVIDER_ID, localBaseUrl };
 
 /** Model ids the local server serves with vision, declared by the operator. */
 export const LOCAL_VISION_MODELS_ENV = "RAKAZO_LOCAL_VISION_MODELS";
@@ -22,23 +22,8 @@ export function localVisionModelIds(): ReadonlySet<string> {
 /** Model ids the local server serves with OpenAI-style `reasoning_effort`, declared by the operator. */
 export const LOCAL_REASONING_MODELS_ENV = "RAKAZO_LOCAL_REASONING_MODELS";
 
-const DEFAULT_BASE_URL = "http://127.0.0.1:11434/v1";
 const DEFAULT_CONTEXT_WINDOW = 32_768;
 const DEFAULT_MAX_TOKENS = 4_096;
-
-export function localBaseUrl(): string {
-  const value = process.env.RAKAZO_LOCAL_MODELS_URL?.trim() || DEFAULT_BASE_URL;
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
-  }
-  return value;
-}
 
 /** Throws instead of `Number(x) || default`, which would swallow a typo or accept a negative window. */
 function tokenLimit(name: string, fallback: number): number {

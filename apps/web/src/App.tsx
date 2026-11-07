@@ -52,6 +52,14 @@ import { SharedPagePage } from "./pages/SharedPage";
 import { ShellPage } from "./pages/Shell";
 import { SlackInstallCallbackPage } from "./pages/SlackInstallCallback";
 
+const MissbunnyApp = lazyComponent(() => import("./missbunny/App").then((module) => module.App));
+
+function isMissbunnyPath(pathname: string) {
+  return ["/demo", "/home", "/models", "/bookings", "/studio"].some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
 const PasswordResetPage = lazyComponent(() =>
   import("./pages/Auth").then((module) => module.PasswordResetPage),
@@ -101,7 +109,11 @@ export function App() {
     <RemoteImagesContext.Provider value={loadRemoteImages}>
       <LinkFaviconsContext.Provider value={linkFavicons}>
         <ErrorBoundary fallback={<AppFailed />}>
-          {window.location.pathname === SSO_CALLBACK_PATH ? (
+          {isMissbunnyPath(window.location.pathname) ? (
+            <Suspense fallback={<PageLoading />}>
+              <MissbunnyApp />
+            </Suspense>
+          ) : window.location.pathname === SSO_CALLBACK_PATH ? (
             <SsoCallbackPage />
           ) : window.location.pathname === "/integrations/callback" ? (
             <IntegrationCallbackPage />

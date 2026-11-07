@@ -38,6 +38,7 @@ import {
   instanceThemeMiddleware,
   withInstanceThemeLink,
 } from "./src/instance-theme.js";
+import { missbunnyApi } from "./src/missbunny/server/vite.ts";
 import { missingAssetMiddleware } from "./src/missing-asset.js";
 import {
   collectNovncHtml,
@@ -548,6 +549,7 @@ export default defineConfig(({ command, mode }) => {
           this.emitFile({ type: "asset", fileName: "build-id", source: `${buildId}\n` });
         },
       },
+      missbunnyApi(),
       react(),
       babel({ plugins: ["@lingui/babel-plugin-lingui-macro"] }),
       lingui(),

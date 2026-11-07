@@ -357,6 +357,9 @@ importers:
       '@orpc/tanstack-query':
         specifier: 1.16.1
         version: 1.16.1(@opentelemetry/api@1.10.0)(@orpc/client@1.16.1(@opentelemetry/api@1.10.0))(@tanstack/query-core@5.105.3)
+      '@rakazo/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
       '@rakazo/chat-ui':
         specifier: workspace:*
         version: link:../../packages/chat-ui

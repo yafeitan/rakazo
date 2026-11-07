@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:missbunny": "vite --config vite.missbunny.config.ts",
     "build": "cross-env NODE_ENV=production vite build",
+    "build:missbunny": "vite build --config vite.missbunny.config.ts && esbuild src/missbunny/server/node-handler.ts --bundle --platform=node --format=esm --outfile=api/missbunny.js",
+    "preview:missbunny": "vite preview --config vite.missbunny.config.ts",
     "preview": "vite preview",
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p e2e/tsconfig.json",
     "test": "vitest run --root ../.. apps/web/src",
@@ -20,6 +23,7 @@
     "@orpc/client": "1.16.1",
     "@orpc/contract": "1.16.1",
     "@orpc/tanstack-query": "1.16.1",
+    "@rakazo/adapters": "workspace:*",
     "@rakazo/chat-ui": "workspace:*",
     "@rakazo/contracts": "workspace:*",
     "@rakazo/core": "workspace:*",
