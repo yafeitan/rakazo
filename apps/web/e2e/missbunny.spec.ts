@@ -138,6 +138,11 @@ test("the model can top up a demo credit balance", async ({ page }) => {
   await page.getByRole("button", { name: "以模特查看引擎" }).click();
   await page.getByRole("button", { name: "充值" }).click();
   await expect(page.getByRole("heading", { name: "充值额度" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "A$200", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "现在支付 A$200" })).toBeEnabled();
   await page.getByRole("button", { name: "其他" }).click();
   await page.getByLabel("其他金额").fill("20");
   await expect(page.getByText("至少 A$50")).toBeVisible();

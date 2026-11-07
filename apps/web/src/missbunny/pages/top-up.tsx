@@ -16,7 +16,7 @@ export function CreditTopUp() {
   const { copy } = useLocale();
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState(0);
-  const [selection, setSelection] = useState<number | "other">(100);
+  const [selection, setSelection] = useState<number | "other">(200);
   const [custom, setCustom] = useState("");
   const [done, setDone] = useState<number | null>(null);
   const amount = topUpAmount(selection, custom);
