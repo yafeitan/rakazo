@@ -13,6 +13,8 @@ export type Copy = {
   tryDemo: string;
   kicker: string;
   hero: string;
+  priceTagline: string;
+  priceSupport: string;
   heroDetail: string;
   metaDescription: string;
   lines: readonly Line[];
@@ -82,6 +84,9 @@ const zh: Copy = {
   tryDemo: "试用演示",
   kicker: "AI that works while you sleep",
   hero: "你睡觉，AI 也在帮你干活",
+  priceTagline: "开张不要钱，看店要钱。",
+  priceSupport:
+    "AI 员工搭建和工具免费，每月 A$300–600 只付看店：回客人、筛单、收定金、记账，不乱说。",
   heroDetail: "只服务澳洲的独立模特。不服务经纪公司。",
   metaDescription: "Miss Bunny OS，澳洲独立模特的运营系统。你睡觉，AI 也在帮你干活。",
   lines: [
@@ -165,6 +170,9 @@ const en: Copy = {
   tryDemo: "Try the demo",
   kicker: "AI that works while you sleep",
   hero: "You sleep. The AI keeps working.",
+  priceTagline: "Opening shop is free. Minding the shop is what you pay for.",
+  priceSupport:
+    "AI employee setup and tools are free. A$300–600 a month pays only for minding the shop: answering guests, screening bookings, collecting deposits, keeping the books, not making things up.",
   heroDetail: "For independent models in Australia. Not for agencies.",
   metaDescription:
     "Miss Bunny OS, an operating system for independent models in Australia. You sleep. The AI keeps working.",

@@ -3,6 +3,12 @@ import { expect, test } from "@playwright/test";
 test("missbunny opens the guest booking flows and the model dashboard", async ({ page }) => {
   await page.goto("/home");
   await expect(page.getByRole("heading", { name: "你睡觉，AI 也在帮你干活" })).toBeVisible();
+  await expect(page.getByText("开张不要钱，看店要钱。")).toBeVisible();
+  await expect(
+    page.getByText(
+      "AI 员工搭建和工具免费，每月 A$300–600 只付看店：回客人、筛单、收定金、记账，不乱说。",
+    ),
+  ).toBeVisible();
   await expect(page.getByText("Miss Bunny OS").first()).toBeVisible();
   await expect(page.getByText("运营系统")).toBeVisible();
   await expect(page.getByText("需要你确认")).toBeVisible();
@@ -52,6 +58,10 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
   await expect(
     page.getByRole("heading", { name: "You sleep. The AI keeps working." }),
   ).toBeVisible();
+  await expect(
+    page.getByText("Opening shop is free. Minding the shop is what you pay for."),
+  ).toBeVisible();
+  await expect(page.getByText("pays only for minding the shop")).toBeVisible();
   await expect(page.getByText("Operating system")).toBeVisible();
   await expect(page.getByText("About A$300–600.")).toBeVisible();
   await expect(page.getByText("We never hold it.")).toBeVisible();

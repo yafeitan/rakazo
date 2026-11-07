@@ -34,6 +34,8 @@ export function HomePage() {
           <h1 className="mt-4 max-w-xl text-[2.5rem] font-medium leading-tight tracking-tight sm:text-[4rem]">
             {copy.hero}
           </h1>
+          <p className="mt-6 max-w-xl text-body-lg font-medium">{copy.priceTagline}</p>
+          <p className="mt-2 max-w-xl text-muted-foreground">{copy.priceSupport}</p>
           <p className="mt-6 max-w-md text-body-lg text-muted-foreground">{copy.heroDetail}</p>
           <Link to="/demo" className={`${buttonVariants({ size: "lg" })} mt-8`}>
             {copy.tryDemo}

@@ -7,6 +7,8 @@ var en = {
   tryDemo: "Try the demo",
   kicker: "AI that works while you sleep",
   hero: "You sleep. The AI keeps working.",
+  priceTagline: "Opening shop is free. Minding the shop is what you pay for.",
+  priceSupport: "AI employee setup and tools are free. A$300\u2013600 a month pays only for minding the shop: answering guests, screening bookings, collecting deposits, keeping the books, not making things up.",
   heroDetail: "For independent models in Australia. Not for agencies.",
   metaDescription: "Miss Bunny OS, an operating system for independent models in Australia. You sleep. The AI keeps working.",
   lines: [
