@@ -57,17 +57,18 @@ describe("missbunny http", () => {
     expect(withoutToken(one.body ?? {})).not.toContain("wx-ali-private");
   });
 
-  it("keeps payment details behind the invite and contacts behind confirmation", async () => {
+  it("shows a PayID deposit at checkout and keeps contacts until she confirms", async () => {
     const start = await post("bootstrap", undefined);
     const token = start.body?.token as string;
-    const closed = await post("checkout", token, { slug: "wantang" });
-    expect(withoutToken(closed.body ?? {})).not.toContain("payid-wantang-private");
-    const invited = await post("verifyInvite", token, { code: "MB-DEMO" });
-    const open = await post("checkout", invited.body?.token as string, { slug: "wantang" });
+    const open = await post("checkout", token, { slug: "wantang" });
     expect(withoutToken(open.body ?? {})).toContain("payid-wantang-private");
     expect(withoutToken(open.body ?? {})).not.toContain("wx-wantang-private");
+    const phoneOnly = await post("checkout", token, { slug: "chengyue" });
+    expect(withoutToken(phoneOnly.body ?? {})).not.toContain("bank-chengyue-private");
+    const profile = await post("profile", token, { slug: "wantang" });
+    expect(withoutToken(profile.body ?? {})).not.toContain("payid-wantang-private");
 
-    const pending = await post("order", invited.body?.token as string, { id: "order-pending" });
+    const pending = await post("order", token, { id: "order-pending" });
     expect(withoutToken(pending.body ?? {})).not.toContain("wx-wantang-private");
     const paid = await post("pay", pending.body?.token as string, {
       id: "order-pending",

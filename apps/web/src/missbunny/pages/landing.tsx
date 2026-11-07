@@ -5,10 +5,9 @@ import { useDemo } from "../shell";
 
 const STEPS = [
   "浏览主页不需要登录。",
-  "预约时输入邀请码 MB-DEMO。",
-  "选择时间，以及她自己配置的收款方式。",
-  "你点「我已付款」后，她确认到账，联系方式才会出现。",
-  "右上角切换到模特，看今日询问、账本和月费。",
+  "晚棠要求电话，并收一笔 PayID 订金（演示）。她确认到账后，联系方式才出现。",
+  "澄月不收订金。留下电话就可以预约，联系方式随预约出现。",
+  "右上角切换到模特，用订金开关在两种规则之间换。",
   "待付款订单里可以用「模拟超时」；她可以点「未收到」。",
 ];
 
@@ -39,6 +38,14 @@ export function DemoPage() {
       <Link to="/models" className={`${buttonVariants({ size: "lg" })} mt-10`}>
         以客人浏览
       </Link>
+      <div className="mt-4 flex flex-col items-center gap-2">
+        <Link to="/models/wantang/book" className={buttonVariants({ variant: "text" })}>
+          晚棠 · PayID 订金
+        </Link>
+        <Link to="/models/chengyue/book" className={buttonVariants({ variant: "text" })}>
+          澄月 · 只留电话
+        </Link>
+      </div>
       <button
         type="button"
         className={`${buttonVariants({ variant: "text" })} mt-4`}

@@ -100,14 +100,18 @@ describe("missbunny orders", () => {
     expect(presentOrder(asModel, order, true)?.contacts).toBeNull();
   });
 
-  it("walks pending, paid, confirmed, completed", () => {
+  it("walks a PayID deposit from pending to completed", () => {
     const now = new Date("2026-11-07T05:00:00.000Z");
     const created = createOrder(
-      { ...seedState(now), session: { ...seedState(now).session, inviteAccepted: true } },
-      { slug: "chengyue", startsAt: "周日 20:00", paymentMethodId: "pay-chengyue" },
+      seedState(now),
+      { slug: "wantang", startsAt: "周日 20:00", phone: "0412 000 444" },
       now,
     );
     if (!created.ok) throw new Error(created.error);
+    const pending = created.state.orders.find((item) => item.id === created.orderId);
+    expect(pending?.status).toBe("PENDING_PAYMENT");
+    expect(pending?.depositAmount).toBe(100);
+    expect(presentOrder(created.state, pending!, true)?.contacts).toBeNull();
     const paid = markPaid(
       created.state,
       created.orderId,
@@ -115,7 +119,7 @@ describe("missbunny orders", () => {
       now,
     );
     if (!paid) throw new Error("pay");
-    const asModel = setRole(paid, "model", "chengyue");
+    const asModel = setRole(paid, "model", "wantang");
     if (!asModel) throw new Error("role");
     const confirmed = confirmReceived(asModel, created.orderId, now);
     if (!confirmed) throw new Error("confirm");
@@ -126,9 +130,9 @@ describe("missbunny orders", () => {
     expect(done.audits.map((entry) => entry.action)).toEqual(
       expect.arrayContaining(["创建订单", "客人表示已付款", "模特确认到账", "订单完成"]),
     );
-    const guest = setRole(done, "user", "chengyue");
+    const guest = setRole(done, "user", "wantang");
     if (!guest || !order) throw new Error("guest");
-    expect(presentOrder(guest, order, true)?.contacts?.wechat).toBe("wx-chengyue-private");
+    expect(presentOrder(guest, order, true)?.contacts?.wechat).toBe("wx-wantang-private");
   });
 
   it("cancels only a pending order, and disputes only while waiting", () => {
@@ -149,14 +153,21 @@ describe("missbunny orders", () => {
     expect(presentOrder(state, state.orders[0]!, true)?.contacts).toBeNull();
   });
 
-  it("requires an invite before booking", () => {
-    const denied = createOrder(seedState(), {
-      slug: "wantang",
-      startsAt: "周四 19:00",
-      paymentMethodId: "pay-wantang",
-      code: "NOPE",
+  it("books with a phone number when she does not ask for a deposit", () => {
+    const created = createOrder(seedState(), {
+      slug: "chengyue",
+      startsAt: "周日 20:00",
+      phone: "0412000555",
     });
-    expect(denied.ok).toBe(false);
+    if (!created.ok) throw new Error(created.error);
+    const order = created.state.orders.find((item) => item.id === created.orderId);
+    if (!order) throw new Error("missing");
+    expect(order.status).toBe("CONFIRMED");
+    expect(order.depositAmount).toBe(0);
+    expect(presentOrder(created.state, order, true)?.contacts?.wechat).toBe("wx-chengyue-private");
+    expect(
+      createOrder(seedState(), { slug: "chengyue", startsAt: "周日 20:00", phone: "12" }).ok,
+    ).toBe(false);
   });
 
   it("keeps the ledger at zero until the engine is running", () => {

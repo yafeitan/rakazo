@@ -1,6 +1,5 @@
 import type { DemoState, ProfileDraft } from "../domain";
 import {
-  acceptInvite,
   acknowledgeInquiry,
   applyTimeouts,
   bookInquiry,
@@ -19,6 +18,7 @@ import {
   ownProfile,
   presentOrder,
   searchProfiles,
+  setDeposit,
   setRole,
   simulateTimeout,
   toPublicProfile,
@@ -77,11 +77,6 @@ async function dispatch(
     if (!profile) return fail(state, "找不到主页", 404);
     return json(state, { profile: toPublicProfile(profile) });
   }
-  if (op === "verifyInvite") {
-    const next = acceptInvite(state, stringField(body.code));
-    if (!next) return fail(state, "邀请码不正确", 403);
-    return json(next, { accepted: true });
-  }
   if (op === "checkout") {
     const result = checkout(state, stringField(body.slug));
     if (!result) return fail(state, "找不到主页", 404);
@@ -138,12 +133,19 @@ async function dispatch(
     if (!view) return fail(state, "找不到订单", 404);
     return json(state, { order: view });
   }
+  if (op === "setDeposit") {
+    const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
+    const updated = setDeposit(state, amount);
+    if (!updated.ok) return fail(state, updated.error, 409);
+    const payload = dashboardPayload(updated.state);
+    if (!payload) return fail(updated.state, "请切换到模特", 403);
+    return json(updated.state, payload);
+  }
   if (op === "createOrder") {
     const created = createOrder(state, {
       slug: stringField(body.slug),
       startsAt: stringField(body.startsAt),
-      paymentMethodId: stringField(body.paymentMethodId),
-      code: stringField(body.code),
+      phone: stringField(body.phone),
     });
     if (!created.ok) return fail(state, created.error, 403);
     const order = created.state.orders.find((item) => item.id === created.orderId);

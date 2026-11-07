@@ -1,4 +1,4 @@
-import { Button, buttonVariants, SectionHeading } from "@rakazo/ui-web";
+import { Button, buttonVariants, Input, Label, SectionHeading, Switch } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Assessment, OrderView } from "../api";
@@ -32,6 +32,7 @@ type Dashboard = {
   ledger: Ledger;
   pricing: Pricing;
   heldLabel: string;
+  depositAmount: number;
   badge: string;
   engineLog: { id: string; text: string }[];
   inquiries: InquiryView[];
@@ -71,6 +72,7 @@ export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [amount, setAmount] = useState<string | null>(null);
 
   useEffect(() => {
     if (shell.session.role !== "model") return;
@@ -88,6 +90,21 @@ export function DashboardPage() {
       active = false;
     };
   }, [apply, shell.session.modelId, shell.session.role]);
+
+  async function saveDeposit(next: number) {
+    setPending(true);
+    setError(null);
+    try {
+      const body = await call<Dashboard>("setDeposit", { amount: next });
+      apply(body.shell);
+      setData(body);
+      setAmount(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "没有完成");
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function lead(op: string, id: string) {
     setPending(true);
@@ -148,6 +165,47 @@ export function DashboardPage() {
         <p className="text-label text-muted-foreground">引擎运行中</p>
         <h1 className="mt-2 text-heading3 font-medium">{data.stageName}</h1>
       </header>
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <SectionHeading as="h2">订金</SectionHeading>
+            <p className="mt-1 text-muted-foreground">
+              {data.depositAmount > 0
+                ? `PayID ${formatAud(data.depositAmount)}（演示）`
+                : "只留电话"}
+            </p>
+          </div>
+          <Switch
+            checked={data.depositAmount > 0}
+            aria-label="需要 PayID 订金"
+            disabled={pending}
+            onCheckedChange={(checked) => void saveDeposit(checked ? data.depositAmount || 100 : 0)}
+          />
+        </div>
+        {data.depositAmount > 0 ? (
+          <form
+            className="flex items-end gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveDeposit(Number(amount ?? data.depositAmount));
+            }}
+          >
+            <div className="flex-1">
+              <Label htmlFor="deposit">金额</Label>
+              <Input
+                id="deposit"
+                inputMode="numeric"
+                value={amount ?? String(data.depositAmount)}
+                onChange={(event) => setAmount(event.target.value)}
+                className="mt-2 h-12 rounded-xl px-4 text-[16px]/6 md:text-body-lg"
+              />
+            </div>
+            <Button type="submit" variant="outline" disabled={pending}>
+              保存
+            </Button>
+          </form>
+        ) : null}
+      </section>
       <section className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-4">
           <div>

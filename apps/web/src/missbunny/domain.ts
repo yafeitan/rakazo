@@ -1,6 +1,5 @@
 /** Missbunny demo domain. Pure data and transitions; no I/O. */
 
-export const INVITE_CODE = "MB-DEMO";
 export const PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 export const PHOTO_GOAL = 3;
 export const DEMO_USER_ID = "demo-guest";
@@ -34,6 +33,8 @@ export type Profile = {
   photoCount: number;
   paymentMethods: PaymentMethod[];
   contacts: Contacts;
+  /** 0 means a phone number is enough. A positive amount is a PayID deposit. */
+  depositAmount: number;
   published: boolean;
   engineStarted: boolean;
 };
@@ -64,6 +65,8 @@ export type Order = {
   userId: string;
   startsAt: string;
   paymentMethodId: string;
+  guestPhone: string;
+  depositAmount: number;
   status: OrderStatus;
   note: string;
   screenshotAttached: boolean;
@@ -119,7 +122,6 @@ export type Session = {
   userId: string;
   userName: string;
   modelId: string;
-  inviteAccepted: boolean;
 };
 
 export type DemoState = {
@@ -142,6 +144,7 @@ export type PublicProfile = {
   bio: string;
   photoCount: number;
   paymentLabels: string[];
+  depositAmount: number;
 };
 
 export type Gap = { id: string; suggestion: string };
@@ -164,7 +167,9 @@ export type OrderView = {
   screenshotAttached: boolean;
   createdAt: string;
   paymentLabel: string;
-  payment: { label: string; accountName: string; reference: string } | null;
+  guestPhone: string;
+  depositAmount: number;
+  payment: { label: string; accountName: string; reference: string; amount: number } | null;
   contacts: Contacts | null;
   audits: AuditEntry[];
 };
@@ -297,6 +302,7 @@ export function toPublicProfile(profile: Profile): PublicProfile {
     bio: profile.bio,
     photoCount: profile.photoCount,
     paymentLabels: profile.paymentMethods.map((method) => method.label),
+    depositAmount: profile.depositAmount,
   };
 }
 
@@ -481,9 +487,39 @@ export function setRole(
   return { ...state, session: { ...state.session, role, modelId } };
 }
 
-export function acceptInvite(state: DemoState, code: string): DemoState | null {
-  if (code.trim().toUpperCase() !== INVITE_CODE) return null;
-  return { ...state, session: { ...state.session, inviteAccepted: true } };
+function guestPhone(value: string): string | null {
+  const compact = value.trim().replace(/[^\d+]/g, "");
+  const digits = compact.replace(/\D/g, "").length;
+  if (digits < 8 || digits > 15) return null;
+  return compact.slice(0, 16);
+}
+
+function payidMethod(profile: Profile): PaymentMethod | undefined {
+  return profile.paymentMethods.find((method) => method.kind === "payid");
+}
+
+export function setDeposit(
+  state: DemoState,
+  amount: number,
+): { ok: true; state: DemoState } | { ok: false; error: string } {
+  if (state.session.role !== "model" || !state.session.modelId) {
+    return { ok: false, error: "请切换到模特" };
+  }
+  if (!Number.isInteger(amount) || amount < 0 || amount > 5000) {
+    return { ok: false, error: "订金金额无效" };
+  }
+  const profile = profileById(state, state.session.modelId);
+  if (!profile) return { ok: false, error: "没有这个档案" };
+  if (amount > 0 && !payidMethod(profile)) return { ok: false, error: "先在档案里添加 PayID" };
+  return {
+    ok: true,
+    state: {
+      ...state,
+      profiles: state.profiles.map((item) =>
+        item.id === profile.id ? { ...item, depositAmount: amount } : item,
+      ),
+    },
+  };
 }
 
 export function applyTimeouts(state: DemoState, now = new Date()): DemoState {
@@ -538,29 +574,28 @@ function canModel(state: DemoState, order: Order): boolean {
 
 export function createOrder(
   state: DemoState,
-  input: { slug: string; startsAt: string; paymentMethodId: string; code?: string },
+  input: { slug: string; startsAt: string; phone: string },
   now = new Date(),
 ): { ok: true; state: DemoState; orderId: string } | { ok: false; error: string } {
   if (state.session.role !== "user") return { ok: false, error: "请以客人身份预约" };
-  let next = state;
-  if (!next.session.inviteAccepted) {
-    const accepted = input.code ? acceptInvite(next, input.code) : null;
-    if (!accepted) return { ok: false, error: "需要邀请码" };
-    next = accepted;
-  }
-  const profile = next.profiles.find((item) => item.slug === input.slug && item.published);
+  const phone = guestPhone(input.phone);
+  if (!phone) return { ok: false, error: "请留下电话" };
+  const profile = state.profiles.find((item) => item.slug === input.slug && item.published);
   if (!profile) return { ok: false, error: "找不到可预约的主页" };
-  const method = profile.paymentMethods.find((item) => item.id === input.paymentMethodId);
-  if (!method) return { ok: false, error: "请选择她配置的收款方式" };
   const startsAt = input.startsAt.trim().slice(0, 40);
   if (!startsAt) return { ok: false, error: "请选择时间" };
+  const deposit = profile.depositAmount;
+  const method = deposit > 0 ? payidMethod(profile) : undefined;
+  if (deposit > 0 && !method) return { ok: false, error: "她还没有设置 PayID" };
   const order: Order = {
     id: createId("order"),
     profileId: profile.id,
-    userId: next.session.userId,
+    userId: state.session.userId,
     startsAt,
-    paymentMethodId: method.id,
-    status: "PENDING_PAYMENT",
+    paymentMethodId: method?.id ?? "",
+    guestPhone: phone,
+    depositAmount: deposit,
+    status: deposit > 0 ? "PENDING_PAYMENT" : "CONFIRMED",
     note: "",
     screenshotAttached: false,
     createdAt: now.toISOString(),
@@ -576,7 +611,7 @@ export function createOrder(
   return {
     ok: true,
     orderId: order.id,
-    state: { ...next, orders: [...next.orders, order], audits: [...next.audits, audit] },
+    state: { ...state, orders: [...state.orders, order], audits: [...state.audits, audit] },
   };
 }
 
@@ -654,9 +689,16 @@ export function presentOrder(state: DemoState, order: Order, detail: boolean): O
     screenshotAttached: order.screenshotAttached,
     createdAt: order.createdAt,
     paymentLabel: method?.label ?? "",
+    guestPhone: order.guestPhone,
+    depositAmount: order.depositAmount,
     payment:
-      detail && method
-        ? { label: method.label, accountName: method.accountName, reference: method.reference }
+      detail && method && order.depositAmount > 0
+        ? {
+            label: method.label,
+            accountName: method.accountName,
+            reference: method.reference,
+            amount: order.depositAmount,
+          }
         : null,
     contacts: released && profile ? { ...profile.contacts } : null,
     audits: detail ? state.audits.filter((entry) => entry.orderId === order.id) : [],
@@ -696,6 +738,7 @@ export function commitEngine(
         id: createId("model"),
         slug: slugFor(state, cleaned.stageName),
         ...cleaned,
+        depositAmount: 0,
         published: assessment.ready,
         engineStarted: assessment.ready,
       };
@@ -736,17 +779,15 @@ export function checkout(
   slug: string,
 ): {
   profile: PublicProfile;
-  needsInvite: boolean;
-  methods: PaymentMethod[];
+  depositAmount: number;
+  payid: PaymentMethod | null;
 } | null {
   const profile = state.profiles.find((item) => item.slug === slug && item.published);
   if (!profile) return null;
   return {
     profile: toPublicProfile(profile),
-    needsInvite: !state.session.inviteAccepted,
-    methods: state.session.inviteAccepted
-      ? profile.paymentMethods.map((method) => ({ ...method }))
-      : [],
+    depositAmount: profile.depositAmount,
+    payid: profile.depositAmount > 0 ? (payidMethod(profile) ?? null) : null,
   };
 }
 
@@ -795,15 +836,18 @@ export function bookInquiry(
   }
   if (inquiry.status === "booked") return { ok: false, error: "已经变成预约" };
   const profile = profileById(state, inquiry.profileId);
-  const method = profile?.paymentMethods[0];
-  if (!profile || !method) return { ok: false, error: "至少设置一种收款方式" };
+  if (!profile) return { ok: false, error: "找不到这条询问" };
+  const method = profile.depositAmount > 0 ? payidMethod(profile) : undefined;
+  if (profile.depositAmount > 0 && !method) return { ok: false, error: "先在档案里添加 PayID" };
   const order: Order = {
     id: createId("order"),
     profileId: profile.id,
     userId: DEMO_USER_ID,
     startsAt: "周四 19:00",
-    paymentMethodId: method.id,
-    status: "PENDING_PAYMENT",
+    paymentMethodId: method?.id ?? "",
+    guestPhone: "0400000099",
+    depositAmount: profile.depositAmount,
+    status: profile.depositAmount > 0 ? "PENDING_PAYMENT" : "CONFIRMED",
     note: "演示询问",
     screenshotAttached: false,
     createdAt: now.toISOString(),
@@ -842,6 +886,7 @@ export function dashboard(state: DemoState, now = new Date()) {
     ledger: books,
     pricing: pricingQuote(books.total),
     heldLabel: profile.paymentMethods[0]?.label ?? "",
+    depositAmount: profile.depositAmount,
     badge: ANSWER_BADGE,
     engineLog: state.engineLog.filter(
       (entry) => entry.profileId === profile.id && dayKey(new Date(entry.at)) === today,

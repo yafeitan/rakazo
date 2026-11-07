@@ -1,5 +1,4 @@
 // src/missbunny/domain.ts
-var INVITE_CODE = "MB-DEMO";
 var PAYMENT_WINDOW_MS = 30 * 60 * 1e3;
 var PHOTO_GOAL = 3;
 var DEMO_USER_ID = "demo-guest";
@@ -108,7 +107,8 @@ function toPublicProfile(profile) {
     availability: profile.availability,
     bio: profile.bio,
     photoCount: profile.photoCount,
-    paymentLabels: profile.paymentMethods.map((method) => method.label)
+    paymentLabels: profile.paymentMethods.map((method) => method.label),
+    depositAmount: profile.depositAmount
   };
 }
 function searchProfiles(state, query) {
@@ -245,9 +245,34 @@ function setRole(state, role, modelId) {
   if (!profileById(state, modelId)) return null;
   return { ...state, session: { ...state.session, role, modelId } };
 }
-function acceptInvite(state, code) {
-  if (code.trim().toUpperCase() !== INVITE_CODE) return null;
-  return { ...state, session: { ...state.session, inviteAccepted: true } };
+function guestPhone(value) {
+  const compact = value.trim().replace(/[^\d+]/g, "");
+  const digits = compact.replace(/\D/g, "").length;
+  if (digits < 8 || digits > 15) return null;
+  return compact.slice(0, 16);
+}
+function payidMethod(profile) {
+  return profile.paymentMethods.find((method) => method.kind === "payid");
+}
+function setDeposit(state, amount) {
+  if (state.session.role !== "model" || !state.session.modelId) {
+    return { ok: false, error: "\u8BF7\u5207\u6362\u5230\u6A21\u7279" };
+  }
+  if (!Number.isInteger(amount) || amount < 0 || amount > 5e3) {
+    return { ok: false, error: "\u8BA2\u91D1\u91D1\u989D\u65E0\u6548" };
+  }
+  const profile = profileById(state, state.session.modelId);
+  if (!profile) return { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u6863\u6848" };
+  if (amount > 0 && !payidMethod(profile)) return { ok: false, error: "\u5148\u5728\u6863\u6848\u91CC\u6DFB\u52A0 PayID" };
+  return {
+    ok: true,
+    state: {
+      ...state,
+      profiles: state.profiles.map(
+        (item) => item.id === profile.id ? { ...item, depositAmount: amount } : item
+      )
+    }
+  };
 }
 function applyTimeouts(state, now = /* @__PURE__ */ new Date()) {
   let next = state;
@@ -289,25 +314,24 @@ function canModel(state, order) {
 }
 function createOrder(state, input, now = /* @__PURE__ */ new Date()) {
   if (state.session.role !== "user") return { ok: false, error: "\u8BF7\u4EE5\u5BA2\u4EBA\u8EAB\u4EFD\u9884\u7EA6" };
-  let next = state;
-  if (!next.session.inviteAccepted) {
-    const accepted = input.code ? acceptInvite(next, input.code) : null;
-    if (!accepted) return { ok: false, error: "\u9700\u8981\u9080\u8BF7\u7801" };
-    next = accepted;
-  }
-  const profile = next.profiles.find((item) => item.slug === input.slug && item.published);
+  const phone = guestPhone(input.phone);
+  if (!phone) return { ok: false, error: "\u8BF7\u7559\u4E0B\u7535\u8BDD" };
+  const profile = state.profiles.find((item) => item.slug === input.slug && item.published);
   if (!profile) return { ok: false, error: "\u627E\u4E0D\u5230\u53EF\u9884\u7EA6\u7684\u4E3B\u9875" };
-  const method = profile.paymentMethods.find((item) => item.id === input.paymentMethodId);
-  if (!method) return { ok: false, error: "\u8BF7\u9009\u62E9\u5979\u914D\u7F6E\u7684\u6536\u6B3E\u65B9\u5F0F" };
   const startsAt = input.startsAt.trim().slice(0, 40);
   if (!startsAt) return { ok: false, error: "\u8BF7\u9009\u62E9\u65F6\u95F4" };
+  const deposit = profile.depositAmount;
+  const method = deposit > 0 ? payidMethod(profile) : void 0;
+  if (deposit > 0 && !method) return { ok: false, error: "\u5979\u8FD8\u6CA1\u6709\u8BBE\u7F6E PayID" };
   const order = {
     id: createId("order"),
     profileId: profile.id,
-    userId: next.session.userId,
+    userId: state.session.userId,
     startsAt,
-    paymentMethodId: method.id,
-    status: "PENDING_PAYMENT",
+    paymentMethodId: method?.id ?? "",
+    guestPhone: phone,
+    depositAmount: deposit,
+    status: deposit > 0 ? "PENDING_PAYMENT" : "CONFIRMED",
     note: "",
     screenshotAttached: false,
     createdAt: now.toISOString(),
@@ -323,7 +347,7 @@ function createOrder(state, input, now = /* @__PURE__ */ new Date()) {
   return {
     ok: true,
     orderId: order.id,
-    state: { ...next, orders: [...next.orders, order], audits: [...next.audits, audit] }
+    state: { ...state, orders: [...state.orders, order], audits: [...state.audits, audit] }
   };
 }
 function markPaid(state, orderId, input, now = /* @__PURE__ */ new Date()) {
@@ -373,7 +397,14 @@ function presentOrder(state, order, detail) {
     screenshotAttached: order.screenshotAttached,
     createdAt: order.createdAt,
     paymentLabel: method?.label ?? "",
-    payment: detail && method ? { label: method.label, accountName: method.accountName, reference: method.reference } : null,
+    guestPhone: order.guestPhone,
+    depositAmount: order.depositAmount,
+    payment: detail && method && order.depositAmount > 0 ? {
+      label: method.label,
+      accountName: method.accountName,
+      reference: method.reference,
+      amount: order.depositAmount
+    } : null,
     contacts: released && profile ? { ...profile.contacts } : null,
     audits: detail ? state.audits.filter((entry) => entry.orderId === order.id) : []
   };
@@ -399,6 +430,7 @@ function commitEngine(state, draft, now = /* @__PURE__ */ new Date()) {
     id: createId("model"),
     slug: slugFor(state, cleaned.stageName),
     ...cleaned,
+    depositAmount: 0,
     published: assessment.ready,
     engineStarted: assessment.ready
   };
@@ -434,8 +466,8 @@ function checkout(state, slug) {
   if (!profile) return null;
   return {
     profile: toPublicProfile(profile),
-    needsInvite: !state.session.inviteAccepted,
-    methods: state.session.inviteAccepted ? profile.paymentMethods.map((method) => ({ ...method })) : []
+    depositAmount: profile.depositAmount,
+    payid: profile.depositAmount > 0 ? payidMethod(profile) ?? null : null
   };
 }
 function ownProfile(state) {
@@ -472,15 +504,18 @@ function bookInquiry(state, id, now = /* @__PURE__ */ new Date()) {
   }
   if (inquiry.status === "booked") return { ok: false, error: "\u5DF2\u7ECF\u53D8\u6210\u9884\u7EA6" };
   const profile = profileById(state, inquiry.profileId);
-  const method = profile?.paymentMethods[0];
-  if (!profile || !method) return { ok: false, error: "\u81F3\u5C11\u8BBE\u7F6E\u4E00\u79CD\u6536\u6B3E\u65B9\u5F0F" };
+  if (!profile) return { ok: false, error: "\u627E\u4E0D\u5230\u8FD9\u6761\u8BE2\u95EE" };
+  const method = profile.depositAmount > 0 ? payidMethod(profile) : void 0;
+  if (profile.depositAmount > 0 && !method) return { ok: false, error: "\u5148\u5728\u6863\u6848\u91CC\u6DFB\u52A0 PayID" };
   const order = {
     id: createId("order"),
     profileId: profile.id,
     userId: DEMO_USER_ID,
     startsAt: "\u5468\u56DB 19:00",
-    paymentMethodId: method.id,
-    status: "PENDING_PAYMENT",
+    paymentMethodId: method?.id ?? "",
+    guestPhone: "0400000099",
+    depositAmount: profile.depositAmount,
+    status: profile.depositAmount > 0 ? "PENDING_PAYMENT" : "CONFIRMED",
     note: "\u6F14\u793A\u8BE2\u95EE",
     screenshotAttached: false,
     createdAt: now.toISOString(),
@@ -518,6 +553,7 @@ function dashboard(state, now = /* @__PURE__ */ new Date()) {
     ledger: books,
     pricing: pricingQuote(books.total),
     heldLabel: profile.paymentMethods[0]?.label ?? "",
+    depositAmount: profile.depositAmount,
     badge: ANSWER_BADGE,
     engineLog: state.engineLog.filter(
       (entry) => entry.profileId === profile.id && dayKey(new Date(entry.at)) === today
@@ -612,6 +648,7 @@ function seedState(now = /* @__PURE__ */ new Date()) {
       whatsapp: "wa-wantang-private",
       sms: "0400000001"
     },
+    depositAmount: 100,
     published: true,
     engineStarted: true
   };
@@ -635,6 +672,7 @@ function seedState(now = /* @__PURE__ */ new Date()) {
       }
     ],
     contacts: { wechat: "wx-chengyue-private", telegram: "tg-chengyue-private" },
+    depositAmount: 0,
     published: true,
     engineStarted: true
   };
@@ -650,6 +688,7 @@ function seedState(now = /* @__PURE__ */ new Date()) {
     photoCount: 1,
     paymentMethods: [],
     contacts: { wechat: "wx-ali-private" },
+    depositAmount: 0,
     published: false,
     engineStarted: false
   };
@@ -660,6 +699,8 @@ function seedState(now = /* @__PURE__ */ new Date()) {
       userId: DEMO_USER_ID,
       startsAt: "\u5468\u4E94 19:30",
       paymentMethodId: "pay-wantang",
+      guestPhone: "0412000111",
+      depositAmount: 100,
       status: "PENDING_PAYMENT",
       note: "",
       screenshotAttached: false,
@@ -672,6 +713,8 @@ function seedState(now = /* @__PURE__ */ new Date()) {
       userId: DEMO_USER_ID,
       startsAt: "\u5468\u516D 18:00",
       paymentMethodId: "pay-wantang",
+      guestPhone: "0412000222",
+      depositAmount: 100,
       status: "AWAITING_MODEL_CONFIRM",
       note: "\u5DF2\u6309\u5907\u6CE8\u8F6C\u8D26",
       screenshotAttached: true,
@@ -684,6 +727,8 @@ function seedState(now = /* @__PURE__ */ new Date()) {
       userId: DEMO_USER_ID,
       startsAt: "\u5468\u56DB 19:00",
       paymentMethodId: "pay-wantang",
+      guestPhone: "0412000333",
+      depositAmount: 100,
       status: "CONFIRMED",
       note: "",
       screenshotAttached: false,
@@ -726,8 +771,7 @@ function seedState(now = /* @__PURE__ */ new Date()) {
       role: "user",
       userId: DEMO_USER_ID,
       userName: DEMO_USER_NAME,
-      modelId: "wantang",
-      inviteAccepted: false
+      modelId: "wantang"
     },
     profiles: [wantang, chengyue, ali],
     orders,
@@ -854,11 +898,6 @@ async function dispatch(state, body) {
     if (!profile) return fail(state, "\u627E\u4E0D\u5230\u4E3B\u9875", 404);
     return json(state, { profile: toPublicProfile(profile) });
   }
-  if (op === "verifyInvite") {
-    const next = acceptInvite(state, stringField(body.code));
-    if (!next) return fail(state, "\u9080\u8BF7\u7801\u4E0D\u6B63\u786E", 403);
-    return json(next, { accepted: true });
-  }
   if (op === "checkout") {
     const result = checkout(state, stringField(body.slug));
     if (!result) return fail(state, "\u627E\u4E0D\u5230\u4E3B\u9875", 404);
@@ -915,12 +954,19 @@ async function dispatch(state, body) {
     if (!view2) return fail(state, "\u627E\u4E0D\u5230\u8BA2\u5355", 404);
     return json(state, { order: view2 });
   }
+  if (op === "setDeposit") {
+    const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
+    const updated = setDeposit(state, amount);
+    if (!updated.ok) return fail(state, updated.error, 409);
+    const payload = dashboardPayload(updated.state);
+    if (!payload) return fail(updated.state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
+    return json(updated.state, payload);
+  }
   if (op === "createOrder") {
     const created = createOrder(state, {
       slug: stringField(body.slug),
       startsAt: stringField(body.startsAt),
-      paymentMethodId: stringField(body.paymentMethodId),
-      code: stringField(body.code)
+      phone: stringField(body.phone)
     });
     if (!created.ok) return fail(state, created.error, 403);
     const order2 = created.state.orders.find((item) => item.id === created.orderId);

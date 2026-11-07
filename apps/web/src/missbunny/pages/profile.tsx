@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { PublicProfile } from "../api";
 import { call } from "../api";
+import { formatAud } from "../domain";
 import { useDemo } from "../shell";
 
 export function ProfilePage() {
@@ -36,6 +37,11 @@ export function ProfilePage() {
         <h1 className="text-display font-medium tracking-tight">{profile.stageName}</h1>
         <p className="mt-2 text-body-lg text-muted-foreground">
           {profile.city} · {profile.languages.join(" · ")}
+        </p>
+        <p className="mt-2 text-muted-foreground">
+          {profile.depositAmount > 0
+            ? `PayID 订金 ${formatAud(profile.depositAmount)}（演示）`
+            : "留下电话即可预约"}
         </p>
       </header>
       <p className="max-w-xl text-body-lg">{profile.bio}</p>

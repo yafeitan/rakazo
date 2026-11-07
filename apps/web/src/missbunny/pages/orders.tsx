@@ -110,14 +110,17 @@ export function OrderPage() {
           {order.stageName} · {order.startsAt}
         </h1>
       </header>
-      {order.payment ? (
+      {order.guestPhone ? <p>电话 {order.guestPhone}</p> : null}
+      {order.depositAmount > 0 && order.payment ? (
         <p>
-          {order.payment.label}
+          订金 A${order.depositAmount}（演示）· {order.payment.label}
           <span className="mt-1 block text-muted-foreground">
             {order.payment.accountName} · {order.payment.reference}
           </span>
         </p>
-      ) : null}
+      ) : (
+        <p className="text-muted-foreground">未收订金</p>
+      )}
       {order.status === "PENDING_PAYMENT" && guest ? (
         <form onSubmit={(event) => void pay(event)} className="flex flex-col gap-4">
           <div>
