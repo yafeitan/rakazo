@@ -5,6 +5,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Shimmer } from "../components/ai/primitives";
 import type { ShellInfo } from "./api";
 import { call } from "./api";
+import { LanguageToggle, useLocale } from "./locale";
 
 type DemoContextValue = {
   shell: ShellInfo;
@@ -33,8 +34,9 @@ function Mark() {
 
 export function Shell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const { copy } = useLocale();
   const [shell, setShell] = useState<ShellInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -43,7 +45,7 @@ export function Shell({ children }: { children: ReactNode }) {
         if (active) setShell(body.shell);
       })
       .catch(() => {
-        if (active) setError("演示服务没有打开");
+        if (active) setError(true);
       });
     return () => {
       active = false;
@@ -58,14 +60,14 @@ export function Shell({ children }: { children: ReactNode }) {
   if (error) {
     return (
       <div className="grid h-full place-items-center px-6 text-center">
-        <p className="text-body text-destructive">{error}</p>
+        <p className="text-body text-destructive">{copy.serviceClosed}</p>
       </div>
     );
   }
   if (!value) {
     return (
       <div className="grid h-full place-items-center">
-        <Shimmer>正在打开</Shimmer>
+        <Shimmer>{copy.opening}</Shimmer>
       </div>
     );
   }
@@ -92,14 +94,14 @@ export function Shell({ children }: { children: ReactNode }) {
               to="/models"
               className={({ isActive }) => (isActive ? "text-foreground" : undefined)}
             >
-              浏览
+              {copy.browse}
             </NavLink>
             {session.role === "user" ? (
               <NavLink
                 to="/bookings"
                 className={({ isActive }) => (isActive ? "text-foreground" : undefined)}
               >
-                预约
+                {copy.bookings}
               </NavLink>
             ) : (
               <>
@@ -107,33 +109,36 @@ export function Shell({ children }: { children: ReactNode }) {
                   to="/studio/dashboard"
                   className={({ isActive }) => (isActive ? "text-foreground" : undefined)}
                 >
-                  今日
+                  {copy.today}
                 </NavLink>
                 <NavLink
                   to="/studio"
                   end
                   className={({ isActive }) => (isActive ? "text-foreground" : undefined)}
                 >
-                  档案
+                  {copy.profile}
                 </NavLink>
               </>
             )}
           </nav>
           <div className="ml-auto flex flex-wrap items-center gap-2">
+            <LanguageToggle />
             <NativeSelect
-              aria-label="身份"
+              aria-label={copy.role}
               value={session.role}
               onChange={(event) => {
                 const role = event.target.value === "model" ? "model" : "user";
                 void switchRole(role);
               }}
             >
-              <NativeSelectOption value="user">客人 · {session.userName}</NativeSelectOption>
-              <NativeSelectOption value="model">模特</NativeSelectOption>
+              <NativeSelectOption value="user">
+                {copy.guest} · {session.userName}
+              </NativeSelectOption>
+              <NativeSelectOption value="model">{copy.model}</NativeSelectOption>
             </NativeSelect>
             {session.role === "model" ? (
               <NativeSelect
-                aria-label="档案"
+                aria-label={copy.whichProfile}
                 value={session.modelId || "new"}
                 onChange={(event) => {
                   void switchRole("model", event.target.value);
@@ -144,7 +149,7 @@ export function Shell({ children }: { children: ReactNode }) {
                     {model.stageName}
                   </NativeSelectOption>
                 ))}
-                <NativeSelectOption value="new">新的档案</NativeSelectOption>
+                <NativeSelectOption value="new">{copy.newProfile}</NativeSelectOption>
               </NativeSelect>
             ) : null}
           </div>

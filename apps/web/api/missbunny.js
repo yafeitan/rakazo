@@ -1,3 +1,189 @@
+// src/missbunny/copy.ts
+function parseLang(value) {
+  return value === "en" ? "en" : "zh";
+}
+var en = {
+  operatingSystem: "Operating system",
+  tryDemo: "Try the demo",
+  kicker: "AI that works while you sleep",
+  hero: "You sleep. The AI keeps working.",
+  heroDetail: "For independent models in Australia. Not for agencies.",
+  metaDescription: "Miss Bunny OS, an operating system for independent models in Australia. You sleep. The AI keeps working.",
+  lines: [
+    ["Inquiries get a reply, day and night", "She sleeps. Replies keep going."],
+    ["Someone watches the bookings", "They stay in view."],
+    ["Answers only from what you wrote", "If it isn\u2019t there, it\u2019s marked \u201CNeeds you to confirm.\u201D"],
+    ["Money goes to your own PayID", "We never hold it."],
+    ["The day\u2019s work and income stay visible", "Demo ledger."],
+    ["The monthly fee is AI usage", "About A$300\u2013600."],
+    [
+      "A phone number is enough to book",
+      "The deposit starts at 0. To require one, turn on a PayID deposit in settings."
+    ]
+  ],
+  join: "Join",
+  joinReason: "Search traffic is not enough. The AI employee needs a steady stream of inquiries every day. Without a connection, there is no volume.",
+  selfRun: "Self-run",
+  connectX: "Connect X (demo)",
+  connectedX: "X connected (demo)",
+  connectIvy: "Connect IVY (demo)",
+  connectedIvy: "IVY connected (demo)",
+  chooseSelfRun: "Choose self-run first",
+  missingX: "X is not connected",
+  missingIvy: "IVY is not connected",
+  joined: "Joined (demo)",
+  continue: "Continue",
+  language: "Language",
+  demoTitle: "missbunny",
+  demoIntro: "For independent models in Australia, not agencies. Private, discreet, and hers to decide.",
+  steps: [
+    "Browsing a profile does not need a sign-in.",
+    "Wantang asks for a phone number and a PayID deposit (demo). Contacts appear after she confirms the money arrived.",
+    "Chengyue takes no deposit. A phone number books, and contacts appear with the booking.",
+    "Switch to the model at the top right, and use the deposit switch to move between the two rules.",
+    "A pending payment can be timed out. She can mark it as not received."
+  ],
+  browseAsGuest: "Browse as a guest",
+  wantangDeposit: "Wantang \xB7 PayID deposit",
+  chengyuePhone: "Chengyue \xB7 phone only",
+  openEngine: "Open the engine as the model",
+  opening: "Opening",
+  serviceClosed: "The demo service is not open",
+  browse: "Browse",
+  bookings: "Bookings",
+  today: "Today",
+  profile: "Profile",
+  role: "Role",
+  guest: "Guest",
+  model: "Model",
+  whichProfile: "Profile",
+  newProfile: "New profile",
+  switchToModel: "Switch to the model",
+  readiness: "Readiness",
+  followSteps: "Follow these steps and the engine takes the guests you already invited.",
+  finishProfile: "Finish the profile",
+  engineRunning: "Engine is running",
+  deposit: "Deposit",
+  depositOn: (amount) => `PayID ${amount} (demo)`,
+  phoneOnly: "Phone only",
+  requireDeposit: "Require a PayID deposit",
+  amount: "Amount",
+  save: "Save",
+  incomeToday: "Today\u2019s income",
+  demoLedger: "Demo ledger",
+  monthlyFee: "Monthly fee",
+  recentIncome: (amount) => `Last 7 days ${amount}`,
+  usageBand: "AI usage, about A$300\u2013600 \xB7 demo",
+  held: (label) => `Income goes to the ${label} she set up (demo)`,
+  badge: "Answers only from your profile. Nothing invented.",
+  handOff: "Hand to booking",
+  illConfirm: "I\u2019ll confirm",
+  waiting: "Waiting to confirm",
+  noneWaiting: "Nothing waiting",
+  confirmReceived: "Confirm received",
+  notReceived: "Not received",
+  recentBookings: "Recent bookings",
+  noneYet: "None yet",
+  markComplete: "Mark complete",
+  notFinished: "Didn\u2019t finish"
+};
+var QUESTIONS = {
+  "lead-time": "Are you free Thursday evening?",
+  "lead-price": "What do you charge tonight?",
+  "lead-booked": "I would like a dinner companion."
+};
+var DRAFTS = {
+  "lead-time": "Available: Thursday to Sunday, after dusk.",
+  "lead-booked": "Private dinners, event attendance, and quiet trips around the city."
+};
+var GUESTS = {
+  "\u5468\u5B81\uFF08\u6F14\u793A\uFF09": "Zhou Ning (demo)",
+  "\u6797\u53EF\uFF08\u6F14\u793A\uFF09": "Lin Ke (demo)",
+  "\u9648\u4E88\u5B89\uFF08\u6F14\u793A\uFF09": "Chen Yu'an (demo)"
+};
+var ENGINE = {
+  \u9605\u8BFB\u4E86\u6863\u6848: "Read the profile",
+  "\u6838\u5BF9\u4E86\u7167\u7247\u3001\u53EF\u7EA6\u65F6\u95F4\u548C\u6536\u6B3E\u65B9\u5F0F": "Checked photos, availability, and how she is paid",
+  \u53D1\u5E03\u4E86\u4E3B\u9875: "Published the page",
+  \u5F00\u59CB\u4E3A\u5DF2\u9080\u8BF7\u7684\u5BA2\u4EBA\u5339\u914D: "Started matching guests she already invited",
+  \u6838\u5BF9\u4E86\u53EF\u7EA6\u65F6\u95F4: "Checked availability",
+  \u4E3B\u9875\u4FDD\u6301\u53EF\u6D4F\u89C8: "The page stays open to browse"
+};
+var GAPS = {
+  name: "Add a stage name",
+  city: "Choose a city",
+  languages: "Choose at least one language",
+  services: "Write a few lines about what you offer",
+  availability: "Add the times you are free",
+  payment: "Add at least one way to be paid"
+};
+var STATUS = {
+  PENDING_PAYMENT: "Awaiting payment",
+  AWAITING_MODEL_CONFIRM: "Waiting for her to confirm",
+  CONFIRMED: "Confirmed",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+  DISPUTED: "Not confirmed"
+};
+var NOTES = {
+  \u5DF2\u6309\u5907\u6CE8\u8F6C\u8D26: "Transferred with the reference",
+  \u6F14\u793A\u8BE2\u95EE: "Demo inquiry"
+};
+var WEEKDAY = {
+  \u5468\u4E00: "Mon",
+  \u5468\u4E8C: "Tue",
+  \u5468\u4E09: "Wed",
+  \u5468\u56DB: "Thu",
+  \u5468\u4E94: "Fri",
+  \u5468\u516D: "Sat",
+  \u5468\u65E5: "Sun"
+};
+function englishGap(gap) {
+  const photos = gap.suggestion.match(/再添加 (\d+) 张照片/);
+  if (gap.id === "photos" && photos) return `Add ${photos[1]} more photos`;
+  return GAPS[gap.id] ?? gap.suggestion;
+}
+function englishWhen(value) {
+  return value.replace(/周[一二三四五六日]/, (day) => WEEKDAY[day] ?? day);
+}
+function englishInquiry(inquiry) {
+  return {
+    ...inquiry,
+    guestName: GUESTS[inquiry.guestName] ?? inquiry.guestName,
+    question: QUESTIONS[inquiry.id] ?? inquiry.question,
+    draft: inquiry.draft ? DRAFTS[inquiry.id] ?? inquiry.draft : "",
+    label: inquiry.needsConfirm ? "Needs you to confirm" : inquiry.status === "booked" ? "Now a booking" : "Drafted"
+  };
+}
+function englishOrder(order) {
+  const paymentLabel = order.paymentLabel === "\u94F6\u884C\u8F6C\u8D26" ? "Bank transfer" : order.paymentLabel;
+  return {
+    ...order,
+    statusLabel: STATUS[order.status] ?? order.statusLabel,
+    note: NOTES[order.note] ?? order.note,
+    startsAt: englishWhen(order.startsAt),
+    paymentLabel
+  };
+}
+function localizeDashboard(view, lang) {
+  if (lang === "zh") return view;
+  return {
+    ...view,
+    badge: en.badge,
+    assessment: {
+      ...view.assessment,
+      gaps: view.assessment.gaps.map((gap) => ({ ...gap, suggestion: englishGap(gap) }))
+    },
+    engineLog: view.engineLog.map((entry) => ({
+      ...entry,
+      text: ENGINE[entry.text] ?? entry.text
+    })),
+    inquiries: view.inquiries.map(englishInquiry),
+    awaiting: view.awaiting.map(englishOrder),
+    recent: view.recent.map(englishOrder)
+  };
+}
+
 // src/missbunny/domain.ts
 var PAYMENT_WINDOW_MS = 30 * 60 * 1e3;
 var PHOTO_GOAL = 3;
@@ -958,21 +1144,21 @@ async function dispatch(state, body) {
     return { stream: true, state, draft };
   }
   if (op === "dashboard") {
-    const payload = dashboardPayload(state);
+    const payload = dashboardPayload(state, parseLang(body.lang));
     if (!payload) return fail(state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
     return json(state, payload);
   }
   if (op === "acknowledge") {
     const next = acknowledgeInquiry(state, stringField(body.id));
     if (!next) return fail(state, "\u8FD9\u6761\u8BE2\u95EE\u4E0D\u80FD\u8FD9\u6837\u5904\u7406", 409);
-    const payload = dashboardPayload(next);
+    const payload = dashboardPayload(next, parseLang(body.lang));
     if (!payload) return fail(next, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
     return json(next, payload);
   }
   if (op === "bookLead") {
     const booked = bookInquiry(state, stringField(body.id));
     if (!booked.ok) return fail(state, booked.error, 409);
-    const payload = dashboardPayload(booked.state);
+    const payload = dashboardPayload(booked.state, parseLang(body.lang));
     if (!payload) return fail(booked.state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
     return json(booked.state, payload);
   }
@@ -988,7 +1174,7 @@ async function dispatch(state, body) {
     const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
     const updated = setDeposit(state, amount);
     if (!updated.ok) return fail(state, updated.error, 409);
-    const payload = dashboardPayload(updated.state);
+    const payload = dashboardPayload(updated.state, parseLang(body.lang));
     if (!payload) return fail(updated.state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
     return json(updated.state, payload);
   }
@@ -1014,12 +1200,13 @@ async function dispatch(state, body) {
   const view = order ? presentOrder(mutated, order, true) : null;
   return json(mutated, { order: view });
 }
-function dashboardPayload(state) {
+function dashboardPayload(state, lang = "zh") {
   const view = dashboard(state);
   if (!view) return null;
   const { profile, ...rest } = view;
+  const localized = localizeDashboard(rest, lang);
   return {
-    ...rest,
+    ...localized,
     stageName: profile.stageName,
     city: profile.city,
     published: profile.published,

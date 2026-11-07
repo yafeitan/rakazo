@@ -1,3 +1,5 @@
+import type { Lang } from "../copy";
+import { localizeDashboard, parseLang } from "../copy";
 import type { DemoState, ProfileDraft } from "../domain";
 import {
   acknowledgeInquiry,
@@ -107,21 +109,21 @@ async function dispatch(
     return { stream: true, state, draft };
   }
   if (op === "dashboard") {
-    const payload = dashboardPayload(state);
+    const payload = dashboardPayload(state, parseLang(body.lang));
     if (!payload) return fail(state, "请切换到模特", 403);
     return json(state, payload);
   }
   if (op === "acknowledge") {
     const next = acknowledgeInquiry(state, stringField(body.id));
     if (!next) return fail(state, "这条询问不能这样处理", 409);
-    const payload = dashboardPayload(next);
+    const payload = dashboardPayload(next, parseLang(body.lang));
     if (!payload) return fail(next, "请切换到模特", 403);
     return json(next, payload);
   }
   if (op === "bookLead") {
     const booked = bookInquiry(state, stringField(body.id));
     if (!booked.ok) return fail(state, booked.error, 409);
-    const payload = dashboardPayload(booked.state);
+    const payload = dashboardPayload(booked.state, parseLang(body.lang));
     if (!payload) return fail(booked.state, "请切换到模特", 403);
     return json(booked.state, payload);
   }
@@ -137,7 +139,7 @@ async function dispatch(
     const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
     const updated = setDeposit(state, amount);
     if (!updated.ok) return fail(state, updated.error, 409);
-    const payload = dashboardPayload(updated.state);
+    const payload = dashboardPayload(updated.state, parseLang(body.lang));
     if (!payload) return fail(updated.state, "请切换到模特", 403);
     return json(updated.state, payload);
   }
@@ -175,12 +177,13 @@ async function dispatch(
   return json(mutated, { order: view });
 }
 
-function dashboardPayload(state: DemoState) {
+function dashboardPayload(state: DemoState, lang: Lang = "zh") {
   const view = dashboard(state);
   if (!view) return null;
   const { profile, ...rest } = view;
+  const localized = localizeDashboard(rest, lang);
   return {
-    ...rest,
+    ...localized,
     stageName: profile.stageName,
     city: profile.city,
     published: profile.published,
