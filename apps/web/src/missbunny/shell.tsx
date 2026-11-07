@@ -1,7 +1,7 @@
 import { NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Shimmer } from "../components/ai/primitives";
 import type { ShellInfo } from "./api";
 import { call } from "./api";
@@ -39,6 +39,7 @@ function Mark() {
 
 export function Shell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const wide = useLocation().pathname.startsWith("/studio/ops");
   const { lang, copy } = useLocale();
   const [shell, setShell] = useState<ShellInfo | null>(null);
   const [error, setError] = useState(false);
@@ -159,7 +160,9 @@ export function Shell({ children }: { children: ReactNode }) {
             ) : null}
           </div>
         </header>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-16">{children}</main>
+        <main className={`mx-auto w-full flex-1 px-5 pb-16 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
+          {children}
+        </main>
       </div>
     </DemoContext.Provider>
   );

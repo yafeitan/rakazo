@@ -197,16 +197,21 @@ test("a public profile stays off the operating system origin", async ({ page }) 
 
 test("the operations screen shows the agent working without a click", async ({ page }) => {
   await page.goto("/studio/ops");
-  await expect(page.getByRole("heading", { name: "AI 正在做" })).toBeVisible({ timeout: 3000 });
+  await expect(page.getByRole("tab", { name: /接待/ })).toBeVisible({ timeout: 3000 });
   await expect(page.locator("[aria-busy=true]")).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("在做").first()).toBeVisible();
+  await expect(page.getByText("等她确认").first()).toBeVisible();
+  await expect(page.getByText("空闲").first()).toBeVisible();
+  await expect(page.getByText("待确认")).toBeVisible();
+  await expect(page.getByText("剩余点数")).toBeVisible();
   await expect(page.getByText("这是演示模特，还没走入驻。")).toBeVisible();
 
   await page.goto("/studio/ops?lang=en");
-  await expect(page.getByRole("heading", { name: "Agent working now" })).toBeVisible({
-    timeout: 3000,
-  });
+  await expect(page.getByRole("tab", { name: /Reception/ })).toBeVisible({ timeout: 3000 });
   await expect(page.locator("[aria-busy=true]")).toBeVisible({ timeout: 3000 });
-  await expect(page.getByText("Reading her profile")).toBeVisible();
+  await expect(page.getByText("Drafting a reply")).toBeVisible();
+  await expect(page.getByText("Waiting for her").first()).toBeVisible();
+  await expect(page.getByText("Idle").first()).toBeVisible();
 });
 
 test("a sensitive reply stays unsent until she edits it", async ({ page }) => {

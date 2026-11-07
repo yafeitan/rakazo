@@ -44,6 +44,9 @@ const SEEDED: Record<"zh" | "en", WorkspaceDraft> = {
   },
 };
 
+type AgentId = "guest" | "file" | "push" | "pay";
+type AgentState = "working" | "waiting" | "idle";
+
 function readWorkspace(lang: "zh" | "en"): WorkspaceDraft | null {
   try {
     const parsed = JSON.parse(sessionStorage.getItem(WORKSPACE_KEY) ?? "") as WorkspaceDraft;
@@ -52,6 +55,38 @@ function readWorkspace(lang: "zh" | "en"): WorkspaceDraft | null {
     // A direct visit still runs on the seeded model.
   }
   return null;
+}
+
+function useAgentLoop(steps: readonly string[], enabled: boolean) {
+  const [index, setIndex] = useState(0);
+  const [loop, setLoop] = useState(0);
+  const [finished, setFinished] = useState<{ id: string; text: string; at: string }[]>([]);
+  const [typed, setTyped] = useState(1);
+
+  useEffect(() => {
+    if (!enabled) return;
+    setTyped(1);
+    const typingTimer = window.setInterval(() => setTyped((count) => count + 1), 40);
+    const wait = loop === 0 ? 2200 : 4800;
+    const advance = window.setTimeout(() => {
+      const at = new Date().toLocaleTimeString("en-GB", { hour12: false });
+      const text = steps[index] ?? "";
+      setFinished((list) => [{ id: `${loop}-${index}`, text, at }, ...list].slice(0, 6));
+      if (index >= steps.length - 1) {
+        setLoop((count) => count + 1);
+        setIndex(0);
+      } else {
+        setIndex((current) => current + 1);
+      }
+    }, wait);
+    return () => {
+      window.clearInterval(typingTimer);
+      window.clearTimeout(advance);
+    };
+  }, [enabled, index, loop, steps]);
+
+  const current = steps[index] ?? steps[0] ?? "";
+  return { shown: enabled ? current.slice(0, typed) : "", finished, running: enabled };
 }
 
 type GuestLine = { id: string; from: "guest" | "her"; text: string };
@@ -63,18 +98,13 @@ export function OpsPage() {
   const saved = useMemo(() => readWorkspace(lang), [lang]);
   const draft = saved ?? SEEDED[lang];
   const turns = useMemo(() => guestTurns(draft, lang), [draft, lang]);
-  const [today, setToday] = useState<string[]>([]);
+  const [selected, setSelected] = useState<AgentId>("guest");
   const [orderReady, setOrderReady] = useState(false);
   const [paid, setPaid] = useState(false);
-  const [used, setUsed] = useState(0);
   const [editing, setEditing] = useState<"profile" | "schedule" | null>(null);
   const [draftText, setDraftText] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
-  const [index, setIndex] = useState(0);
-  const [loop, setLoop] = useState(0);
-  const [finished, setFinished] = useState<{ id: string; text: string; at: string }[]>([]);
-  const [tick, setTick] = useState(0);
-  const [typed, setTyped] = useState(1);
+  const [pushReady, setPushReady] = useState(true);
   const [turnIndex, setTurnIndex] = useState(0);
   const [reply, setReply] = useState(turns[0]?.draft ?? "");
   const [editingReply, setEditingReply] = useState(false);
@@ -83,8 +113,10 @@ export function OpsPage() {
     turns[0] ? [{ id: turns[0].id, from: "guest", text: turns[0].guest }] : [],
   );
   const [typing, setTyping] = useState(false);
-  const steps = copy.workSteps;
-  const current = steps[index] ?? steps[0] ?? "";
+  const guestLoop = useAgentLoop(copy.guestSteps, selected === "guest");
+  const fileLoop = useAgentLoop(copy.fileSteps, selected === "file");
+  const pushLoop = useAgentLoop(copy.pushSteps, selected === "push");
+  const payLoop = useAgentLoop(copy.paySteps, selected === "pay");
   const turn = turns[turnIndex];
   const queue = useRef<Outbound[]>([]);
   const pumping = useRef(false);
@@ -109,32 +141,6 @@ export function OpsPage() {
       active = false;
     };
   }, [apply, shell.session.role]);
-
-  useEffect(() => {
-    setTick(0);
-    setTyped(1);
-    const typingTimer = window.setInterval(() => setTyped((count) => count + 1), 40);
-    const ticking = window.setInterval(() => setTick((count) => count + 1), 200);
-    const wait = loop === 0 ? 2200 : 4800;
-    const advance = window.setTimeout(() => {
-      const at = new Date().toLocaleTimeString("en-GB", { hour12: false });
-      const text = steps[index] ?? "";
-      setFinished((list) => [{ id: `${loop}-${index}`, text, at }, ...list].slice(0, 8));
-      setToday((list) => [`${at} ${text}`, ...list].slice(0, 30));
-      setUsed((count) => count + 1);
-      if (index >= steps.length - 1) {
-        setLoop((count) => count + 1);
-        setIndex(0);
-      } else {
-        setIndex((currentIndex) => currentIndex + 1);
-      }
-    }, wait);
-    return () => {
-      window.clearInterval(typingTimer);
-      window.clearInterval(ticking);
-      window.clearTimeout(advance);
-    };
-  }, [index, loop, steps]);
 
   useEffect(() => {
     const first = turns[0];
@@ -197,8 +203,6 @@ export function OpsPage() {
   }
 
   function log(text: string) {
-    setToday((currentList) => [...currentList, text]);
-    setUsed((count) => count + 1);
     setNotice(text);
     setEditing(null);
   }
@@ -206,12 +210,9 @@ export function OpsPage() {
   function receive() {
     if (paid) return;
     setPaid(true);
-    setToday((currentList) => [...currentList, copy.depositRecorded]);
-    setUsed((count) => count + 1);
   }
 
   const publicUrl = publicProfileUrl("wantang", lang);
-  const shown = current.slice(0, typed);
   const canSend = turn
     ? canSendDraft({
         kind: turn.kind,
@@ -221,10 +222,44 @@ export function OpsPage() {
       })
     : false;
   const collected = paid ? DEPOSIT : 0;
-  const pending = orderReady && !paid ? DEPOSIT : 0;
+
+  const statusOf = (id: AgentId): AgentState => {
+    if (id === "guest") {
+      if (paid || !turn) return "idle";
+      if (turn.kind === "needsHer" && !canSend) return "waiting";
+      return "working";
+    }
+    if (id === "file") return selected === "file" ? "working" : "idle";
+    if (id === "push") return pushReady ? "waiting" : selected === "push" ? "working" : "idle";
+    if (orderReady && !paid) return "waiting";
+    if (paid || selected === "pay") return "working";
+    return "idle";
+  };
+
+  const agents: { id: AgentId; name: string }[] = [
+    { id: "guest", name: copy.agentGuest },
+    { id: "file", name: copy.agentFile },
+    { id: "push", name: copy.agentPush },
+    { id: "pay", name: copy.agentPay },
+  ];
+  const waitingCount = agents.filter((agent) => statusOf(agent.id) === "waiting").length;
+  const loop =
+    selected === "guest"
+      ? guestLoop
+      : selected === "file"
+        ? fileLoop
+        : selected === "push"
+          ? pushLoop
+          : payLoop;
+  const statusLabel = (state: AgentState) =>
+    state === "working"
+      ? copy.statusWorking
+      : state === "waiting"
+        ? copy.statusWaiting
+        : copy.statusIdle;
 
   return (
-    <div className="flex flex-col gap-8 pt-4">
+    <div className="flex flex-col gap-6 pt-4">
       {saved ? null : (
         <p className="text-muted-foreground">
           {copy.seedBanner}{" "}
@@ -233,44 +268,87 @@ export function OpsPage() {
           </Link>
         </p>
       )}
-      <section aria-labelledby="working-now" className="flex flex-col gap-3">
-        <h2 id="working-now" className="text-heading3 font-medium">
-          {copy.workNow}
-        </h2>
-        <ul className="flex flex-col gap-2">
-          <li aria-busy="true" className="flex items-center gap-3">
-            <Spinner />
-            <span>
-              {shown}
-              <span className="animate-pulse">|</span>
-            </span>
-            <span className="text-muted-foreground">{tick}</span>
-          </li>
-          {finished.map((step) => (
-            <li key={step.id} className="flex items-center gap-3 text-muted-foreground">
-              <span aria-hidden>✓</span>
-              <span>{step.text}</span>
-              <time>{step.at}</time>
-            </li>
-          ))}
-        </ul>
-      </section>
-      {paid ? (
-        <section className="flex flex-col gap-2">
-          <p>{copy.unlocked}</p>
-          <ul className="flex flex-col gap-1 text-muted-foreground">
-            <li>{copy.helperWho}</li>
-            <li>{draft.availability}</li>
-            <li>
-              {draft.services} · {draft.payment} · {formatAud(DEPOSIT)}
-            </li>
-            <li>{copy.paidReminder}</li>
-            <li>{copy.ahaLedger}</li>
-          </ul>
-        </section>
-      ) : (
-        <>
-          {turn ? (
+      <h1 className="text-heading3 font-medium">
+        {copy.desk}
+        <span className="mt-1 block text-body text-muted-foreground">
+          {draft.stageName} · {draft.city}
+        </span>
+      </h1>
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)_16rem] lg:items-start">
+        <div
+          role="tablist"
+          aria-label={copy.agentsLabel}
+          className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap"
+        >
+          {agents.map((agent) => {
+            const state = statusOf(agent.id);
+            return (
+              <button
+                key={agent.id}
+                type="button"
+                role="tab"
+                aria-selected={selected === agent.id}
+                className="flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left aria-selected:bg-muted"
+                onClick={() => setSelected(agent.id)}
+              >
+                <span
+                  aria-hidden
+                  className={`size-2 shrink-0 rounded-full ${
+                    state === "waiting"
+                      ? "bg-warning"
+                      : state === "working"
+                        ? "bg-foreground"
+                        : "bg-muted-foreground/40"
+                  }`}
+                />
+                <span>{agent.name}</span>
+                <span className="text-muted-foreground">{statusLabel(state)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <aside className="order-3 flex flex-col gap-4">
+          <div>
+            <p className="text-label text-muted-foreground">{copy.awaitingCount}</p>
+            <p className="mt-1 text-body-lg font-medium">{waitingCount}</p>
+          </div>
+          <div>
+            <p className="text-label text-muted-foreground">{copy.collected}</p>
+            <p className="mt-1 text-body-lg font-medium">{formatAud(collected)}</p>
+          </div>
+          <CreditTopUp />
+          <p>
+            <span className="text-muted-foreground">{copy.publicLink}</span>
+            <a className="mt-1 block break-all" href={publicUrl}>
+              {publicUrl}
+            </a>
+          </p>
+        </aside>
+        <section role="tabpanel" className="order-2 flex min-w-0 flex-col gap-4">
+          {paid ? (
+            <div className="flex flex-col gap-2">
+              <p>{copy.unlocked}</p>
+              <ul className="flex flex-col gap-1 text-muted-foreground">
+                <li>{copy.helperWho}</li>
+                <li>{draft.availability}</li>
+                <li>
+                  {draft.services} · {draft.payment} · {formatAud(DEPOSIT)}
+                </li>
+                <li>{copy.paidReminder}</li>
+                <li>{copy.ahaLedger}</li>
+              </ul>
+            </div>
+          ) : null}
+          {!paid && orderReady ? (
+            <div className="flex flex-col gap-3 rounded-xl px-4 py-4 ring-1 ring-warning">
+              <p>{copy.ahaPending}</p>
+              <p className="text-muted-foreground">{copy.ahaContactHidden}</p>
+              <Button type="button" onClick={receive}>
+                {copy.ahaReceived}
+              </Button>
+            </div>
+          ) : null}
+          {selected === "guest" && !paid && turn ? (
             <article
               className={`flex flex-col gap-3 rounded-xl px-4 py-4 ring-1 ${turn.kind === "needsHer" ? "ring-warning" : "ring-foreground/10"}`}
             >
@@ -304,90 +382,80 @@ export function OpsPage() {
               </div>
             </article>
           ) : null}
-          {orderReady ? (
-            <div className="flex flex-col gap-3">
-              <p>{copy.ahaPending}</p>
-              <p className="text-muted-foreground">{copy.ahaContactHidden}</p>
-              <Button type="button" onClick={receive}>
-                {copy.ahaReceived}
+          {selected === "push" && pushReady ? (
+            <article className="flex flex-col gap-3 rounded-xl px-4 py-4 ring-1 ring-warning">
+              <p>{copy.pushDraft}</p>
+              <Button
+                type="button"
+                onClick={() => {
+                  setPushReady(false);
+                  log(copy.pushed);
+                  window.setTimeout(() => setPushReady(true), 6000);
+                }}
+              >
+                {copy.confirmPush}
+              </Button>
+            </article>
+          ) : null}
+          {loop.running ? (
+            <ul className="flex flex-col gap-2">
+              <li aria-busy="true" className="flex items-center gap-3">
+                <Spinner />
+                <span>
+                  {loop.shown}
+                  <span className="animate-pulse">|</span>
+                </span>
+              </li>
+              {loop.finished.map((step) => (
+                <li key={step.id} className="flex items-center gap-3 text-muted-foreground">
+                  <span aria-hidden>✓</span>
+                  <span>{step.text}</span>
+                  <time>{step.at}</time>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {selected === "guest" && !paid ? (
+            <section aria-label={copy.guestSees} className="flex flex-col gap-2">
+              <SectionHeading as="h2">{copy.guestSees}</SectionHeading>
+              <ul className="flex flex-col gap-2">
+                {guestLines.map((line) => (
+                  <li key={line.id} className="text-muted-foreground">
+                    {line.text}
+                  </li>
+                ))}
+                {typing ? <li role="status">{copy.typingNow}</li> : null}
+              </ul>
+            </section>
+          ) : null}
+          {selected === "file" ? (
+            <div className="flex flex-wrap gap-2">
+              {notice ? <p role="status">{notice}</p> : null}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDraftText(draft.services);
+                  setEditing("profile");
+                }}
+              >
+                {copy.updateProfile}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDraftText(draft.availability);
+                  setEditing("schedule");
+                }}
+              >
+                {copy.adjustSchedule}
               </Button>
             </div>
           ) : null}
-          <section aria-label={copy.guestSees} className="flex flex-col gap-2">
-            <SectionHeading as="h2">{copy.guestSees}</SectionHeading>
-            <ul className="flex flex-col gap-2">
-              {guestLines.map((line) => (
-                <li key={line.id} className="text-muted-foreground">
-                  {line.text}
-                </li>
-              ))}
-              {typing ? <li role="status">{copy.typingNow}</li> : null}
-            </ul>
-          </section>
-        </>
-      )}
-      <header>
-        <h1 className="text-heading3 font-medium">{copy.desk}</h1>
-        <p className="mt-1 text-muted-foreground">
-          {draft.stageName} · {draft.city}
-        </p>
-        <p className="mt-3">
-          <span className="text-muted-foreground">{copy.publicLink}</span>
-          <a className="mt-1 block break-all" href={publicUrl}>
-            {publicUrl}
-          </a>
-        </p>
-      </header>
-      <section className="grid grid-cols-3 gap-3">
-        <div>
-          <p className="text-label text-muted-foreground">{copy.collected}</p>
-          <p className="mt-1 text-body-lg font-medium">{formatAud(collected)}</p>
-        </div>
-        <div>
-          <p className="text-label text-muted-foreground">{copy.pendingDeposits}</p>
-          <p className="mt-1 text-body-lg font-medium">{formatAud(pending)}</p>
-        </div>
-        <div>
-          <p className="text-label text-muted-foreground">{copy.usage(used)}</p>
-        </div>
-      </section>
-      <CreditTopUp />
-      <section className="flex flex-col gap-2">
-        <SectionHeading as="h2">{copy.todayDid}</SectionHeading>
-        <ol className="flex flex-col gap-1 text-muted-foreground">
-          {today.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-      </section>
-      <section className="flex flex-col gap-3">
-        {notice ? <p role="status">{notice}</p> : null}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setDraftText(draft.services);
-              setEditing("profile");
-            }}
-          >
-            {copy.updateProfile}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setDraftText(draft.availability);
-              setEditing("schedule");
-            }}
-          >
-            {copy.adjustSchedule}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => log(copy.pushed)}>
-            {copy.push}
-          </Button>
-        </div>
-      </section>
+          {selected === "push" && notice ? <p role="status">{notice}</p> : null}
+        </section>
+      </div>
       <Dialog open={editing != null} onOpenChange={(open) => setEditing(open ? editing : null)}>
         <DialogContent>
           <DialogHeader>

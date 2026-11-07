@@ -122,6 +122,21 @@ export type Copy = {
   workSteps: readonly string[];
   seedBanner: string;
   seedLink: string;
+  agentsLabel: string;
+  agentGuest: string;
+  agentFile: string;
+  agentPush: string;
+  agentPay: string;
+  statusWorking: string;
+  statusWaiting: string;
+  statusIdle: string;
+  awaitingCount: string;
+  confirmPush: string;
+  pushDraft: string;
+  guestSteps: readonly string[];
+  fileSteps: readonly string[];
+  pushSteps: readonly string[];
+  paySteps: readonly string[];
   guestSees: string;
   typingNow: string;
   oneTap: string;
@@ -314,6 +329,21 @@ const zh: Copy = {
   ],
   seedBanner: "这是演示模特，还没走入驻。",
   seedLink: "去入驻",
+  agentsLabel: "员工",
+  agentGuest: "接待",
+  agentFile: "档案",
+  agentPush: "推广",
+  agentPay: "收款",
+  statusWorking: "在做",
+  statusWaiting: "等她确认",
+  statusIdle: "空闲",
+  awaitingCount: "待确认",
+  confirmPush: "确认推送",
+  pushDraft: "今晚可约。私人晚宴。",
+  guestSteps: ["起草回复", "等她确认", "正在看下一条询问"],
+  fileSteps: ["正在读她的档案", "正在把公开主页写到 mrlootbox.com", "正在更新今天的时间"],
+  pushSteps: ["正在准备今天的 X 帖子草稿", "正在安排下一次推送"],
+  paySteps: ["正在核对 PayID", "整理已付客人资料"],
   guestSees: "客人看到的",
   typingNow: "正在输入…",
   oneTap: "可一键发",
@@ -345,7 +375,7 @@ const zh: Copy = {
   qualified: "确认这是一次预约",
   askedDeposit: "向客人要了订金",
   depositRecorded: "订金已入账",
-  demoBalance: "演示余额",
+  demoBalance: "剩余点数",
   topUp: "充值",
   topUpTitle: "充值额度",
   topUpOther: "其他",
@@ -518,6 +548,25 @@ const en: Copy = {
   ],
   seedBanner: "This is a demo model, before onboarding.",
   seedLink: "Fill in onboarding",
+  agentsLabel: "Staff",
+  agentGuest: "Reception",
+  agentFile: "Profile",
+  agentPush: "Promotion",
+  agentPay: "Payments",
+  statusWorking: "Working",
+  statusWaiting: "Waiting for her",
+  statusIdle: "Idle",
+  awaitingCount: "To confirm",
+  confirmPush: "Confirm the push",
+  pushDraft: "Free tonight. Private dinners.",
+  guestSteps: ["Drafting a reply", "Waiting for her to confirm", "Reading the next inquiry"],
+  fileSteps: [
+    "Reading her profile",
+    "Writing her public profile at mrlootbox.com",
+    "Updating today's schedule",
+  ],
+  pushSteps: ["Preparing today's X post draft", "Planning the next push"],
+  paySteps: ["Checking PayID", "Organizing the paid guest's details"],
   guestSees: "What the guest sees",
   typingNow: "typing…",
   oneTap: "One tap",
@@ -549,7 +598,7 @@ const en: Copy = {
   qualified: "Checked that this is a booking",
   askedDeposit: "Asked the guest for the deposit",
   depositRecorded: "Deposit recorded",
-  demoBalance: "Demo balance",
+  demoBalance: "Points left",
   topUp: "Top up",
   topUpTitle: "Top up credits",
   topUpOther: "Other",
