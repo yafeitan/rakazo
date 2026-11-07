@@ -55,7 +55,7 @@ import { SlackInstallCallbackPage } from "./pages/SlackInstallCallback";
 const MissbunnyApp = lazyComponent(() => import("./missbunny/App").then((module) => module.App));
 
 function isMissbunnyPath(pathname: string) {
-  return ["/demo", "/models", "/bookings", "/studio"].some(
+  return ["/demo", "/home", "/models", "/bookings", "/studio"].some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }

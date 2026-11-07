@@ -2,6 +2,7 @@ import { buttonVariants } from "@rakazo/ui-web";
 import { Link, useNavigate } from "react-router-dom";
 import { call } from "../api";
 import { useDemo } from "../shell";
+import { OnboardingFlow } from "./onboarding-flow";
 
 const STEPS = [
   "浏览主页不需要登录。",
@@ -53,6 +54,9 @@ export function DemoPage() {
       >
         以模特查看引擎
       </button>
+      <div className="mt-16 w-full">
+        <OnboardingFlow />
+      </div>
     </div>
   );
 }
