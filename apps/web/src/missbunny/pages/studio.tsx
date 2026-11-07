@@ -81,7 +81,7 @@ export function StudioPage() {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ modelId: shell.session.modelId, draft }));
     navigate("/studio/engine");
   }
 

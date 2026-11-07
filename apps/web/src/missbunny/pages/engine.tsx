@@ -53,7 +53,12 @@ export function EnginePage() {
       }
       let draft: ProfileDraft | null = null;
       const saved = sessionStorage.getItem(DRAFT_KEY);
-      if (saved) draft = JSON.parse(saved) as ProfileDraft;
+      if (saved) {
+        const parsed = JSON.parse(saved) as { modelId?: string; draft?: ProfileDraft };
+        if (parsed.modelId === shellRef.current.session.modelId && parsed.draft) {
+          draft = parsed.draft;
+        }
+      }
       if (!draft) {
         const studio = await call<{ draft: ProfileDraft | null }>("studio");
         if (ignore) return;

@@ -235,7 +235,9 @@ export async function handleMissbunny(request: Request): Promise<Response> {
   } catch {
     return Response.json({ error: "无法读取请求" }, { status: 400 });
   }
-  const state = applyTimeouts(decodeState(request.headers.get("x-missbunny-token")));
+  const token =
+    typeof payload.token === "string" ? payload.token : request.headers.get("x-missbunny-token");
+  const state = applyTimeouts(decodeState(token));
   const result = await dispatch(state, payload);
   if (result instanceof Response) return result;
   return streamEngine(result.state, result.draft);

@@ -715,6 +715,19 @@ export function listOrders(state: DemoState): OrderView[] {
     });
 }
 
+function refreshInquiries(state: DemoState, profile: Profile): Inquiry[] {
+  return state.inquiries.map((inquiry) => {
+    if (inquiry.profileId !== profile.id || inquiry.status === "booked") return inquiry;
+    const reply = replyFromProfile(profile, inquiry.topic);
+    const status = reply.needsConfirm
+      ? "needs_model"
+      : inquiry.status === "needs_model"
+        ? "drafted"
+        : inquiry.status;
+    return { ...inquiry, draft: reply.draft, needsConfirm: reply.needsConfirm, status };
+  });
+}
+
 export function commitEngine(
   state: DemoState,
   draft: ProfileDraft,
@@ -769,6 +782,7 @@ export function commitEngine(
       ...state,
       profiles,
       engineLog,
+      inquiries: refreshInquiries(state, profile),
       session: { ...state.session, role: "model", modelId: profile.id },
     },
   };

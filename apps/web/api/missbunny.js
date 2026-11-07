@@ -415,6 +415,14 @@ function listOrders(state) {
     return view ? [view] : [];
   });
 }
+function refreshInquiries(state, profile) {
+  return state.inquiries.map((inquiry) => {
+    if (inquiry.profileId !== profile.id || inquiry.status === "booked") return inquiry;
+    const reply = replyFromProfile(profile, inquiry.topic);
+    const status = reply.needsConfirm ? "needs_model" : inquiry.status === "needs_model" ? "drafted" : inquiry.status;
+    return { ...inquiry, draft: reply.draft, needsConfirm: reply.needsConfirm, status };
+  });
+}
 function commitEngine(state, draft, now = /* @__PURE__ */ new Date()) {
   if (state.session.role !== "model") return { ok: false, error: "\u8BF7\u4EE5\u6A21\u7279\u8EAB\u4EFD\u7EE7\u7EED" };
   const cleaned = cleanDraft(draft);
@@ -457,6 +465,7 @@ function commitEngine(state, draft, now = /* @__PURE__ */ new Date()) {
       ...state,
       profiles,
       engineLog,
+      inquiries: refreshInquiries(state, profile),
       session: { ...state.session, role: "model", modelId: profile.id }
     }
   };
@@ -564,45 +573,68 @@ function dashboard(state, now = /* @__PURE__ */ new Date()) {
   };
 }
 
+// ../../packages/adapters/src/pi-local-provider-id.ts
+var DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:11434/v1";
+function localBaseUrl(env = process.env) {
+  const value = env.RAKAZO_LOCAL_MODELS_URL?.trim() || DEFAULT_LOCAL_BASE_URL;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
+  }
+  return value;
+}
+function localModelIds(env = process.env) {
+  return (env.RAKAZO_LOCAL_MODELS ?? "").split(",").map((id) => id.trim()).filter((id) => id.length > 0);
+}
+
+// ../../packages/adapters/src/pi-local-chat.ts
+async function completeLocalChat(messages, options = {}) {
+  const env = options.env ?? process.env;
+  const model = localModelIds(env)[0];
+  if (!model) return null;
+  const base = localBaseUrl(env);
+  const endpoint = new URL("chat/completions", base.endsWith("/") ? base : `${base}/`);
+  const response = await (options.fetch ?? fetch)(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ model, temperature: 0.4, messages })
+  });
+  if (!response.ok) throw new Error("local model request failed");
+  const payload = await response.json();
+  const text = payload.choices?.[0]?.message?.content?.trim() ?? "";
+  return text || null;
+}
+
 // src/missbunny/server/llm.ts
 async function generateProfileCopy(draft, options = {}) {
   const fallback = { bio: templateBio(draft), source: "template" };
-  const env = options.env ?? process.env;
-  const model = (env.RAKAZO_LOCAL_MODELS ?? "").split(",").map((item) => item.trim()).find(Boolean);
-  const base = env.RAKAZO_LOCAL_MODELS_URL?.trim();
-  if (!model || !base) return fallback;
   try {
-    const endpoint = new URL("chat/completions", base.endsWith("/") ? base : `${base}/`);
-    const fetcher = options.fetcher ?? fetch;
-    const response = await fetcher(endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        model,
-        temperature: 0.4,
-        messages: [
-          {
-            role: "system",
-            content: "\u4F60\u4E3A\u6FB3\u6D32\u72EC\u7ACB\u6A21\u7279\u5199\u4E00\u6BB5\u514B\u5236\u3001\u79C1\u4EBA\u7684\u4E3B\u9875\u7B80\u4ECB\u3002\u7528\u4E2D\u6587\uFF0C80\u5230140\u5B57\u3002\u4E0D\u8981\u5199\u4EF7\u683C\uFF0C\u4E0D\u8981\u5199\u9732\u9AA8\u5185\u5BB9\uFF0C\u4E0D\u8981\u51FA\u73B0\u201C\u63F4\u4EA4\u201D\uFF0C\u4E0D\u8981\u5199\u6210\u7ECF\u7EAA\u516C\u53F8\u53E3\u543B\u3002\u8054\u7CFB\u65B9\u5F0F\u5728\u786E\u8BA4\u6536\u6B3E\u540E\u624D\u5F00\u653E\uFF0C\u8FD9\u53E5\u8BDD\u53EF\u4EE5\u4FDD\u7559\u3002"
-          },
-          {
-            role: "user",
-            content: JSON.stringify({
-              stageName: draft.stageName,
-              city: draft.city,
-              languages: draft.languages,
-              services: draft.services,
-              availability: draft.availability
-            })
-          }
-        ]
-      })
-    });
-    if (!response.ok) return fallback;
-    const payload = await response.json();
-    const text = payload.choices?.[0]?.message?.content?.trim().slice(0, 800) ?? "";
+    const text = await completeLocalChat(
+      [
+        {
+          role: "system",
+          content: "\u4F60\u4E3A\u6FB3\u6D32\u72EC\u7ACB\u6A21\u7279\u5199\u4E00\u6BB5\u514B\u5236\u3001\u79C1\u4EBA\u7684\u4E3B\u9875\u7B80\u4ECB\u3002\u7528\u4E2D\u6587\uFF0C80\u5230140\u5B57\u3002\u4E0D\u8981\u5199\u4EF7\u683C\uFF0C\u4E0D\u8981\u5199\u9732\u9AA8\u5185\u5BB9\uFF0C\u4E0D\u8981\u51FA\u73B0\u201C\u63F4\u4EA4\u201D\uFF0C\u4E0D\u8981\u5199\u6210\u7ECF\u7EAA\u516C\u53F8\u53E3\u543B\u3002\u8054\u7CFB\u65B9\u5F0F\u5728\u786E\u8BA4\u6536\u6B3E\u540E\u624D\u5F00\u653E\uFF0C\u8FD9\u53E5\u8BDD\u53EF\u4EE5\u4FDD\u7559\u3002"
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            stageName: draft.stageName,
+            city: draft.city,
+            languages: draft.languages,
+            services: draft.services,
+            availability: draft.availability
+          })
+        }
+      ],
+      { env: options.env, fetch: options.fetcher }
+    );
     if (!text || text.includes("\u63F4\u4EA4")) return fallback;
-    return { bio: text, source: "model" };
+    return { bio: text.slice(0, 800), source: "model" };
   } catch {
     return fallback;
   }
@@ -1043,7 +1075,8 @@ async function handleMissbunny(request) {
   } catch {
     return Response.json({ error: "\u65E0\u6CD5\u8BFB\u53D6\u8BF7\u6C42" }, { status: 400 });
   }
-  const state = applyTimeouts(decodeState(request.headers.get("x-missbunny-token")));
+  const token = typeof payload.token === "string" ? payload.token : request.headers.get("x-missbunny-token");
+  const state = applyTimeouts(decodeState(token));
   const result = await dispatch(state, payload);
   if (result instanceof Response) return result;
   return streamEngine(result.state, result.draft);

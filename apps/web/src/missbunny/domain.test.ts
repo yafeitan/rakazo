@@ -3,6 +3,7 @@ import {
   acknowledgeInquiry,
   assess,
   bookInquiry,
+  commitEngine,
   completeOrder,
   confirmReceived,
   createOrder,
@@ -151,6 +152,24 @@ describe("missbunny orders", () => {
     );
     expect(confirmReceived(disputed ?? asModel, "order-awaiting", now)).toBeNull();
     expect(presentOrder(state, state.orders[0]!, true)?.contacts).toBeNull();
+  });
+
+  it("refreshes an open inquiry when her availability changes", () => {
+    const asModel = setRole(seedState(), "model", "wantang");
+    if (!asModel) throw new Error("role");
+    const profile = asModel.profiles.find((item) => item.id === "wantang");
+    if (!profile) throw new Error("profile");
+    const committed = commitEngine(asModel, {
+      ...draftFromProfile(profile),
+      availability: "仅周五晚上",
+    });
+    if (!committed.ok) throw new Error(committed.error);
+    expect(committed.state.inquiries.find((item) => item.id === "lead-time")?.draft).toContain(
+      "仅周五晚上",
+    );
+    expect(
+      committed.state.inquiries.find((item) => item.id === "lead-booked")?.draft,
+    ).not.toContain("仅周五晚上");
   });
 
   it("books with a phone number when she does not ask for a deposit", () => {

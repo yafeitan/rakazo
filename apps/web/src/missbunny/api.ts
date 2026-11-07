@@ -34,11 +34,8 @@ export async function call<T extends object>(
   const token = localStorage.getItem(KEY);
   const response = await fetch("/api/missbunny", {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { "x-missbunny-token": token } : {}),
-    },
-    body: JSON.stringify({ op, ...payload }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op, ...payload, ...(token ? { token } : {}) }),
   });
   const body = (await response.json()) as T & { shell: ShellInfo; token?: string; error?: string };
   remember(body.token);
@@ -61,11 +58,8 @@ export async function streamEngine(
   const token = localStorage.getItem(KEY);
   const response = await fetch("/api/missbunny", {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { "x-missbunny-token": token } : {}),
-    },
-    body: JSON.stringify({ op: "engine.start", draft }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "engine.start", draft, ...(token ? { token } : {}) }),
     signal,
   });
   if (!response.ok || !response.body) {

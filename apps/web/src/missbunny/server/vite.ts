@@ -1,6 +1,11 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Connect, PreviewServer, ViteDevServer } from "vite";
-import { handleMissbunny } from "./http";
+import type { IncomingMessage } from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import type { PreviewServer, ViteDevServer } from "vite";
+
+type Handler = (request: Request) => Promise<Response>;
+
+const httpModule = path.join(path.dirname(fileURLToPath(import.meta.url)), "http.ts");
 
 async function toRequest(req: IncomingMessage): Promise<Request> {
   const host = req.headers.host ?? "localhost";
@@ -20,35 +25,45 @@ async function toRequest(req: IncomingMessage): Promise<Request> {
   });
 }
 
-async function handle(req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction) {
-  const path = req.url?.split("?")[0];
-  if (path !== "/api/missbunny") {
-    next();
-    return;
-  }
-  const response = await handleMissbunny(await toRequest(req));
-  res.statusCode = response.status;
-  response.headers.forEach((value, key) => {
-    res.setHeader(key, value);
+async function loadHandler(server: ViteDevServer | PreviewServer): Promise<Handler> {
+  if (!("ssrLoadModule" in server)) throw new Error("demo API needs the dev server");
+  const loaded = (await server.ssrLoadModule(httpModule)) as { handleMissbunny: Handler };
+  return loaded.handleMissbunny;
+}
+
+function attach(server: ViteDevServer | PreviewServer) {
+  server.middlewares.use(async (req, res, next) => {
+    const pathname = req.url?.split("?")[0];
+    if (pathname !== "/api/missbunny") {
+      next();
+      return;
+    }
+    try {
+      const handleMissbunny = await loadHandler(server);
+      const response = await handleMissbunny(await toRequest(req));
+      res.statusCode = response.status;
+      response.headers.forEach((value, key) => {
+        res.setHeader(key, value);
+      });
+      if (!response.body) {
+        res.end();
+        return;
+      }
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+      res.end();
+    } catch (error) {
+      next(error);
+    }
   });
-  if (!response.body) {
-    res.end();
-    return;
-  }
-  const reader = response.body.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    res.write(value);
-  }
-  res.end();
 }
 
 /** Serves the demo API from the Vite dev and preview servers. */
 export function missbunnyApi() {
-  const attach = (server: ViteDevServer | PreviewServer) => {
-    server.middlewares.use(handle);
-  };
   return {
     name: "missbunny-api",
     configureServer: attach,
