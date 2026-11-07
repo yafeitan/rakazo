@@ -3,5 +3,8 @@
   "buildCommand": "cd ../.. && pnpm --filter @rakazo/web build:missbunny",
   "outputDirectory": "dist-missbunny",
   "framework": null,
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/p/:slug", "destination": "/api/missbunny?profile=:slug" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }

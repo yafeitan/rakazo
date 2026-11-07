@@ -94,7 +94,18 @@ var en = {
   fieldServices: "Plans",
   fieldPay: "How you get paid",
   stillNeed: (list) => `Still needed: ${list}`,
+  needBind: (list) => `Still bind ${list}`,
   openingDesk: "Opening the workspace",
+  bindX: "Connect X (demo)",
+  boundX: "X connected (demo)",
+  bindIvy: "Connect Ivy (demo)",
+  boundIvy: "Ivy connected (demo)",
+  bindCatch: "Connect Catch (demo)",
+  boundCatch: "Catch connected (demo)",
+  bindRequired: "Required",
+  bindOptional: "Optional",
+  marketRule: "The English market requires Ivy and X.",
+  publicLink: "Her public link",
   collected: "Collected this month",
   pendingDeposits: "Pending deposits",
   usage: (count) => `Used today ${count}`,
@@ -846,76 +857,6 @@ function dashboard(state, now = /* @__PURE__ */ new Date()) {
   };
 }
 
-// ../../packages/adapters/src/pi-local-provider-id.ts
-var DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:11434/v1";
-function localBaseUrl(env = process.env) {
-  const value = env.RAKAZO_LOCAL_MODELS_URL?.trim() || DEFAULT_LOCAL_BASE_URL;
-  let url;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
-  }
-  return value;
-}
-function localModelIds(env = process.env) {
-  return (env.RAKAZO_LOCAL_MODELS ?? "").split(",").map((id) => id.trim()).filter((id) => id.length > 0);
-}
-
-// ../../packages/adapters/src/pi-local-chat.ts
-async function completeLocalChat(messages, options = {}) {
-  const env = options.env ?? process.env;
-  const model = localModelIds(env)[0];
-  if (!model) return null;
-  const base = localBaseUrl(env);
-  const endpoint = new URL("chat/completions", base.endsWith("/") ? base : `${base}/`);
-  const response = await (options.fetch ?? fetch)(endpoint, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ model, temperature: 0.4, messages })
-  });
-  if (!response.ok) throw new Error("local model request failed");
-  const payload = await response.json();
-  const text = payload.choices?.[0]?.message?.content?.trim() ?? "";
-  return text || null;
-}
-
-// src/missbunny/server/llm.ts
-async function generateProfileCopy(draft, options = {}) {
-  const fallback = { bio: templateBio(draft), source: "template" };
-  try {
-    const text = await completeLocalChat(
-      [
-        {
-          role: "system",
-          content: "\u4F60\u4E3A\u6FB3\u6D32\u72EC\u7ACB\u6A21\u7279\u5199\u4E00\u6BB5\u514B\u5236\u3001\u79C1\u4EBA\u7684\u4E3B\u9875\u7B80\u4ECB\u3002\u7528\u4E2D\u6587\uFF0C80\u5230140\u5B57\u3002\u4E0D\u8981\u5199\u4EF7\u683C\uFF0C\u4E0D\u8981\u5199\u9732\u9AA8\u5185\u5BB9\uFF0C\u4E0D\u8981\u51FA\u73B0\u201C\u63F4\u4EA4\u201D\uFF0C\u4E0D\u8981\u5199\u6210\u7ECF\u7EAA\u516C\u53F8\u53E3\u543B\u3002\u8054\u7CFB\u65B9\u5F0F\u5728\u786E\u8BA4\u6536\u6B3E\u540E\u624D\u5F00\u653E\uFF0C\u8FD9\u53E5\u8BDD\u53EF\u4EE5\u4FDD\u7559\u3002"
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            stageName: draft.stageName,
-            city: draft.city,
-            languages: draft.languages,
-            services: draft.services,
-            availability: draft.availability
-          })
-        }
-      ],
-      { env: options.env, fetch: options.fetcher }
-    );
-    if (!text || text.includes("\u63F4\u4EA4")) return fallback;
-    return { bio: text.slice(0, 800), source: "model" };
-  } catch {
-    return fallback;
-  }
-}
-
-// src/missbunny/server/store.ts
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-
 // src/missbunny/seed.ts
 function lines(profileId, texts, at) {
   return texts.map((text, index) => ({
@@ -1129,7 +1070,197 @@ function inquiriesFor(profile, at) {
   ];
 }
 
+// src/missbunny/public-profile.ts
+var DEFAULT_PUBLIC_PROFILE_BASE_URL = "https://mrlootbox.com";
+function publicProfileBaseUrl(env) {
+  const fromProcess = typeof process !== "undefined" ? process.env.PUBLIC_PROFILE_BASE_URL?.trim() : void 0;
+  const configured = env?.PUBLIC_PROFILE_BASE_URL?.trim() || fromProcess;
+  return (configured || DEFAULT_PUBLIC_PROFILE_BASE_URL).replace(/\/$/, "");
+}
+function publicProfileUrl(slug, lang = "zh") {
+  const base = `${publicProfileBaseUrl()}/${slug}`;
+  return lang === "en" ? `${base}?lang=en` : base;
+}
+function publicProfileSlug(pathname) {
+  const match = pathname.match(/^\/p\/([a-z0-9-]+)\/?$/);
+  return match?.[1] ?? null;
+}
+function escapeHtml(value) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+function profileFor(slug, lang) {
+  const profile = seedState().profiles.find((item) => item.slug === slug && item.published);
+  if (!profile) return null;
+  return localizePublicProfile(toPublicProfile(profile), lang);
+}
+function linkCodeModules(value) {
+  const size = 33;
+  const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => false));
+  const finder = (row, col) => {
+    for (let y = 0; y < 7; y += 1) {
+      for (let x = 0; x < 7; x += 1) {
+        const edge = x === 0 || y === 0 || x === 6 || y === 6;
+        const core = x >= 2 && x <= 4 && y >= 2 && y <= 4;
+        grid[row + y][col + x] = edge || core;
+      }
+    }
+  };
+  finder(0, 0);
+  finder(0, size - 7);
+  finder(size - 7, 0);
+  let bit = 0;
+  const bytes = Array.from(new TextEncoder().encode(value));
+  for (let row = 0; row < size; row += 1) {
+    for (let col = 0; col < size; col += 1) {
+      if (grid[row]?.[col]) continue;
+      const reserved = row < 8 && col < 8 || row < 8 && col > size - 9 || row > size - 9 && col < 8;
+      if (reserved) continue;
+      const byte = bytes[Math.floor(bit / 8)] ?? 0;
+      grid[row][col] = (byte >> bit % 8 & 1) === 1;
+      bit += 1;
+    }
+  }
+  return grid;
+}
+function linkCodeSvg(url) {
+  const modules = linkCodeModules(url);
+  const cell = 4;
+  const size = modules.length * cell;
+  const rects = modules.flatMap(
+    (row, y) => row.map(
+      (on, x) => on ? `<rect x="${x * cell}" y="${y * cell}" width="${cell}" height="${cell}"/>` : ""
+    )
+  ).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="168" height="168" role="img" aria-label="${escapeHtml(url)}"><title>${escapeHtml(url)}</title><rect width="100%" height="100%" fill="#fff"/>${rects.replaceAll("<rect ", '<rect fill="#111" ')}</svg>`;
+}
+function renderPublicProfileHtml(slug, lang = "zh") {
+  const profile = profileFor(slug, lang);
+  if (!profile) return null;
+  const url = publicProfileUrl(slug, lang);
+  const other = publicProfileUrl(slug, lang === "en" ? "zh" : "en");
+  const copyLabel = lang === "en" ? "Copy link" : "\u590D\u5236\u94FE\u63A5";
+  const copied = lang === "en" ? "Copied" : "\u5DF2\u590D\u5236";
+  const zhLabel = "\u4E2D\u6587";
+  const enLabel = "EN";
+  const hours = lang === "en" ? "Hours" : "\u53EF\u7EA6";
+  const plans = lang === "en" ? "Plans" : "\u5B89\u6392";
+  const html = `<!doctype html>
+<html lang="${lang === "en" ? "en" : "zh-CN"}">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${escapeHtml(profile.stageName)}</title>
+<link rel="canonical" href="${escapeHtml(url)}"/>
+<meta property="og:url" content="${escapeHtml(url)}"/>
+<meta property="og:title" content="${escapeHtml(profile.stageName)}"/>
+<meta property="og:description" content="${escapeHtml(profile.bio)}"/>
+<style>
+  body { margin: 0; font: 18px/1.5 system-ui, sans-serif; color: #111; background: #fff; }
+  main { max-width: 40rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+  h1 { font-size: 2.5rem; font-weight: 500; margin: 0; }
+  p { margin: 0.5rem 0 0; }
+  .muted { color: #5c5c5c; }
+  a { color: inherit; }
+  button { font: inherit; margin-top: 1rem; }
+  section { margin-top: 1.5rem; }
+  h2 { font-size: 1rem; font-weight: 500; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <p class="muted"><a href="${escapeHtml(other)}">${lang === "en" ? zhLabel : enLabel}</a></p>
+  <h1>${escapeHtml(profile.stageName)}</h1>
+  <p class="muted">${escapeHtml(profile.city)} \xB7 ${escapeHtml(profile.languages.join(" \xB7 "))}</p>
+  <p>${escapeHtml(profile.bio)}</p>
+  <section><h2>${hours}</h2><p>${escapeHtml(profile.availability)}</p></section>
+  <section><h2>${plans}</h2><p>${escapeHtml(profile.services)}</p></section>
+  <section>
+    <p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>
+    <button type="button" id="copy">${copyLabel}</button>
+    <div>${linkCodeSvg(url)}</div>
+  </section>
+</main>
+<script>
+  document.getElementById("copy").addEventListener("click", function () {
+    navigator.clipboard.writeText(${JSON.stringify(url)}).then(function () {
+      document.getElementById("copy").textContent = ${JSON.stringify(copied)};
+    });
+  });
+</script>
+</body>
+</html>`;
+  return html;
+}
+
+// ../../packages/adapters/src/pi-local-provider-id.ts
+var DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:11434/v1";
+function localBaseUrl(env = process.env) {
+  const value = env.RAKAZO_LOCAL_MODELS_URL?.trim() || DEFAULT_LOCAL_BASE_URL;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("RAKAZO_LOCAL_MODELS_URL must be an absolute HTTP(S) URL");
+  }
+  return value;
+}
+function localModelIds(env = process.env) {
+  return (env.RAKAZO_LOCAL_MODELS ?? "").split(",").map((id) => id.trim()).filter((id) => id.length > 0);
+}
+
+// ../../packages/adapters/src/pi-local-chat.ts
+async function completeLocalChat(messages, options = {}) {
+  const env = options.env ?? process.env;
+  const model = localModelIds(env)[0];
+  if (!model) return null;
+  const base = localBaseUrl(env);
+  const endpoint = new URL("chat/completions", base.endsWith("/") ? base : `${base}/`);
+  const response = await (options.fetch ?? fetch)(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ model, temperature: 0.4, messages })
+  });
+  if (!response.ok) throw new Error("local model request failed");
+  const payload = await response.json();
+  const text = payload.choices?.[0]?.message?.content?.trim() ?? "";
+  return text || null;
+}
+
+// src/missbunny/server/llm.ts
+async function generateProfileCopy(draft, options = {}) {
+  const fallback = { bio: templateBio(draft), source: "template" };
+  try {
+    const text = await completeLocalChat(
+      [
+        {
+          role: "system",
+          content: "\u4F60\u4E3A\u6FB3\u6D32\u72EC\u7ACB\u6A21\u7279\u5199\u4E00\u6BB5\u514B\u5236\u3001\u79C1\u4EBA\u7684\u4E3B\u9875\u7B80\u4ECB\u3002\u7528\u4E2D\u6587\uFF0C80\u5230140\u5B57\u3002\u4E0D\u8981\u5199\u4EF7\u683C\uFF0C\u4E0D\u8981\u5199\u9732\u9AA8\u5185\u5BB9\uFF0C\u4E0D\u8981\u51FA\u73B0\u201C\u63F4\u4EA4\u201D\uFF0C\u4E0D\u8981\u5199\u6210\u7ECF\u7EAA\u516C\u53F8\u53E3\u543B\u3002\u8054\u7CFB\u65B9\u5F0F\u5728\u786E\u8BA4\u6536\u6B3E\u540E\u624D\u5F00\u653E\uFF0C\u8FD9\u53E5\u8BDD\u53EF\u4EE5\u4FDD\u7559\u3002"
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            stageName: draft.stageName,
+            city: draft.city,
+            languages: draft.languages,
+            services: draft.services,
+            availability: draft.availability
+          })
+        }
+      ],
+      { env: options.env, fetch: options.fetcher }
+    );
+    if (!text || text.includes("\u63F4\u4EA4")) return fallback;
+    return { bio: text.slice(0, 800), source: "model" };
+  } catch {
+    return fallback;
+  }
+}
+
 // src/missbunny/server/store.ts
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 var SECRET = process.env.MISSBUNNY_STATE_SECRET ?? "missbunny-demo";
 function key() {
   return createHash("sha256").update(SECRET).digest();
@@ -1349,7 +1480,21 @@ function streamEngine(state, draft) {
     }
   });
 }
+function publicProfileFrom(request) {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const url = new URL(request.url);
+  const slug = url.searchParams.get("profile") || publicProfileSlug(url.pathname);
+  if (!slug) return null;
+  const lang = url.searchParams.get("lang") === "en" ? "en" : "zh";
+  const html = renderPublicProfileHtml(slug, lang);
+  if (!html) return new Response("Not found", { status: 404 });
+  return new Response(request.method === "HEAD" ? null : html, {
+    headers: { "content-type": "text/html; charset=utf-8" }
+  });
+}
 async function handleMissbunny(request) {
+  const page = publicProfileFrom(request);
+  if (page) return page;
   if (request.method !== "POST") {
     return Response.json({ error: "\u53EA\u63A5\u53D7 POST" }, { status: 405 });
   }

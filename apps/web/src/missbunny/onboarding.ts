@@ -1,10 +1,17 @@
+export type PlatformId = "x" | "ivy" | "catch";
+
+export type Binds = Record<PlatformId, boolean>;
+
 export type WorkspaceDraft = {
   stageName: string;
   city: string;
   availability: string;
   services: string;
   payment: string;
+  binds: Binds;
 };
+
+export const EMPTY_BINDS: Binds = { x: false, ivy: false, catch: false };
 
 export const EMPTY_WORKSPACE: WorkspaceDraft = {
   stageName: "",
@@ -12,11 +19,12 @@ export const EMPTY_WORKSPACE: WorkspaceDraft = {
   availability: "",
   services: "",
   payment: "",
+  binds: EMPTY_BINDS,
 };
 
 export const WORKSPACE_KEY = "missbunny.workspace";
 
-const REQUIRED: (keyof WorkspaceDraft)[] = [
+const FIELDS: (keyof Omit<WorkspaceDraft, "binds">)[] = [
   "stageName",
   "city",
   "availability",
@@ -24,11 +32,26 @@ const REQUIRED: (keyof WorkspaceDraft)[] = [
   "payment",
 ];
 
-/** Fields still empty. The workspace starts when this list is empty. */
-export function missingWorkspace(draft: WorkspaceDraft): (keyof WorkspaceDraft)[] {
-  return REQUIRED.filter((key) => draft[key].trim().length === 0);
+export type Market = "zh" | "en";
+
+/** English needs Ivy and X. Chinese needs Catch and X. The other platform stays optional. */
+export function requiredPlatforms(market: Market): PlatformId[] {
+  return market === "en" ? ["ivy", "x"] : ["catch", "x"];
 }
 
-export function workspaceReady(draft: WorkspaceDraft): boolean {
-  return missingWorkspace(draft).length === 0;
+export function optionalPlatforms(market: Market): PlatformId[] {
+  return market === "en" ? ["catch"] : ["ivy"];
+}
+
+export function missingFields(draft: WorkspaceDraft): (keyof Omit<WorkspaceDraft, "binds">)[] {
+  return FIELDS.filter((key) => draft[key].trim().length === 0);
+}
+
+export function missingBinds(draft: WorkspaceDraft, market: Market): PlatformId[] {
+  return requiredPlatforms(market).filter((id) => !draft.binds[id]);
+}
+
+/** The workspace opens only when the profile and the market's platforms are set. */
+export function workspaceReady(draft: WorkspaceDraft, market: Market): boolean {
+  return missingFields(draft).length === 0 && missingBinds(draft, market).length === 0;
 }

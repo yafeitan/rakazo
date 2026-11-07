@@ -25,6 +25,7 @@ import {
   simulateTimeout,
   toPublicProfile,
 } from "../domain";
+import { publicProfileSlug, renderPublicProfileHtml } from "../public-profile";
 import { generateProfileCopy } from "./llm";
 import { decodeState, encodeState } from "./store";
 
@@ -238,7 +239,22 @@ function streamEngine(state: DemoState, draft: ProfileDraft): Response {
   });
 }
 
+function publicProfileFrom(request: Request): Response | null {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const url = new URL(request.url);
+  const slug = url.searchParams.get("profile") || publicProfileSlug(url.pathname);
+  if (!slug) return null;
+  const lang = url.searchParams.get("lang") === "en" ? "en" : "zh";
+  const html = renderPublicProfileHtml(slug, lang);
+  if (!html) return new Response("Not found", { status: 404 });
+  return new Response(request.method === "HEAD" ? null : html, {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
+
 export async function handleMissbunny(request: Request): Promise<Response> {
+  const page = publicProfileFrom(request);
+  if (page) return page;
   if (request.method !== "POST") {
     return Response.json({ error: "只接受 POST" }, { status: 405 });
   }

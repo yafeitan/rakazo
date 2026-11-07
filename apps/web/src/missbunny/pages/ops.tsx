@@ -9,41 +9,26 @@ import {
   SectionHeading,
 } from "@rakazo/ui-web";
 import { useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { formatAud } from "../domain";
 import { useLocale } from "../locale";
 import type { WorkspaceDraft } from "../onboarding";
-import { WORKSPACE_KEY } from "../onboarding";
+import { WORKSPACE_KEY, workspaceReady } from "../onboarding";
+import { publicProfileUrl } from "../public-profile";
 import { useDemo } from "../shell";
 import { CreditTopUp } from "./top-up";
 
 const fieldClass = "mt-2 h-12 rounded-xl px-4 text-[16px]/6 md:text-body-lg";
 const DEPOSIT = 100;
 
-const FALLBACK: Record<"zh" | "en", WorkspaceDraft> = {
-  zh: {
-    stageName: "晚棠",
-    city: "墨尔本",
-    availability: "周四至周日，傍晚之后",
-    services: "私人晚宴",
-    payment: "PayID",
-  },
-  en: {
-    stageName: "Wantang",
-    city: "Melbourne",
-    availability: "Thursday to Sunday, after dusk",
-    services: "Private dinners",
-    payment: "PayID",
-  },
-};
-
-function readWorkspace(lang: "zh" | "en"): WorkspaceDraft {
+function readWorkspace(lang: "zh" | "en"): WorkspaceDraft | null {
   try {
     const parsed = JSON.parse(sessionStorage.getItem(WORKSPACE_KEY) ?? "") as WorkspaceDraft;
-    if (parsed.stageName && parsed.payment) return parsed;
+    if (parsed.binds && workspaceReady(parsed, lang)) return parsed;
   } catch {
-    // The desk still opens from the model switch, using the seeded profile.
+    // A direct visit without the required platforms stays off this screen.
   }
-  return FALLBACK[lang];
+  return null;
 }
 
 type FeedItem = { id: string; text: string };
@@ -62,6 +47,7 @@ export function OpsPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!draft) return;
     const steps: { id: string; text: string; today: string; at: number; order?: boolean }[] = [
       { id: "start", text: copy.startedWork, today: copy.startedWork, at: 300 },
       { id: "guest", text: copy.guestAsk, today: copy.guestArrived, at: 900 },
@@ -108,9 +94,13 @@ export function OpsPage() {
     setUsed((count) => count + 1);
   }
 
+  if (!draft) {
+    return <Navigate to={lang === "en" ? "/?lang=en" : "/"} replace />;
+  }
   if (shell.session.role !== "model") {
     return <p className="pt-8 text-muted-foreground">{copy.switchToModel}</p>;
   }
+  const publicUrl = publicProfileUrl("wantang", lang);
 
   const collected = paid ? DEPOSIT : 0;
   const pending = orderReady && !paid ? DEPOSIT : 0;
@@ -121,6 +111,12 @@ export function OpsPage() {
         <h1 className="text-heading3 font-medium">{copy.desk}</h1>
         <p className="mt-1 text-muted-foreground">
           {draft.stageName} · {draft.city}
+        </p>
+        <p className="mt-3">
+          <span className="text-muted-foreground">{copy.publicLink}</span>
+          <a className="mt-1 block break-all" href={publicUrl}>
+            {publicUrl}
+          </a>
         </p>
       </header>
       <section className="grid grid-cols-3 gap-3">

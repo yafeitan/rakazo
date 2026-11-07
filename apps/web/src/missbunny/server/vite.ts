@@ -34,7 +34,7 @@ async function loadHandler(server: ViteDevServer | PreviewServer): Promise<Handl
 function attach(server: ViteDevServer | PreviewServer) {
   server.middlewares.use(async (req, res, next) => {
     const pathname = req.url?.split("?")[0];
-    if (pathname !== "/api/missbunny") {
+    if (pathname !== "/api/missbunny" && !pathname?.startsWith("/p/")) {
       next();
       return;
     }

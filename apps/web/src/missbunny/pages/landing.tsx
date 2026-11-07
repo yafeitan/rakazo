@@ -1,20 +1,13 @@
 import { buttonVariants } from "@rakazo/ui-web";
-import { Link, useNavigate } from "react-router-dom";
-import { call } from "../api";
+import { Link } from "react-router-dom";
 import { useLocale } from "../locale";
-import { useDemo } from "../shell";
 import { OnboardingFlow } from "./onboarding-flow";
 
 export function DemoPage() {
-  const navigate = useNavigate();
-  const { apply } = useDemo();
-  const { lang, copy } = useLocale();
+  const { copy } = useLocale();
 
-  async function openEngine() {
-    const body = await call("session", { role: "model", modelId: "wantang" });
-    apply(body.shell);
-    const params = new URLSearchParams(lang === "en" ? "lang=en" : "");
-    navigate({ pathname: "/studio/ops", search: params.toString() });
+  function openEngine() {
+    document.getElementById("join")?.scrollIntoView();
   }
 
   return (

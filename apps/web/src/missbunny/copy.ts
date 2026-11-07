@@ -83,7 +83,18 @@ export type Copy = {
   fieldServices: string;
   fieldPay: string;
   stillNeed: (list: string) => string;
+  needBind: (list: string) => string;
   openingDesk: string;
+  bindX: string;
+  boundX: string;
+  bindIvy: string;
+  boundIvy: string;
+  bindCatch: string;
+  boundCatch: string;
+  bindRequired: string;
+  bindOptional: string;
+  marketRule: string;
+  publicLink: string;
   collected: string;
   pendingDeposits: string;
   usage: (count: number) => string;
@@ -218,7 +229,18 @@ const zh: Copy = {
   fieldServices: "安排",
   fieldPay: "收款方式",
   stillNeed: (list) => `还要填写${list}`,
+  needBind: (list) => `还要绑定${list}`,
   openingDesk: "正在打开工作台",
+  bindX: "绑定 X（演示）",
+  boundX: "X 已绑定（演示）",
+  bindIvy: "绑定 Ivy（演示）",
+  boundIvy: "Ivy 已绑定（演示）",
+  bindCatch: "绑定 Catch（演示）",
+  boundCatch: "Catch 已绑定（演示）",
+  bindRequired: "必选",
+  bindOptional: "可选",
+  marketRule: "中文市场要绑定 Catch 和 X。",
+  publicLink: "她的公开链接",
   collected: "本月已收",
   pendingDeposits: "待收订金",
   usage: (count) => `今日用量 ${count}`,
@@ -365,7 +387,18 @@ const en: Copy = {
   fieldServices: "Plans",
   fieldPay: "How you get paid",
   stillNeed: (list) => `Still needed: ${list}`,
+  needBind: (list) => `Still bind ${list}`,
   openingDesk: "Opening the workspace",
+  bindX: "Connect X (demo)",
+  boundX: "X connected (demo)",
+  bindIvy: "Connect Ivy (demo)",
+  boundIvy: "Ivy connected (demo)",
+  bindCatch: "Connect Catch (demo)",
+  boundCatch: "Catch connected (demo)",
+  bindRequired: "Required",
+  bindOptional: "Optional",
+  marketRule: "The English market requires Ivy and X.",
+  publicLink: "Her public link",
   collected: "Collected this month",
   pendingDeposits: "Pending deposits",
   usage: (count) => `Used today ${count}`,

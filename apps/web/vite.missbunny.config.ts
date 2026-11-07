@@ -12,7 +12,13 @@ const htmlPath = path.join(root, "missbunny.html");
 
 function isAppRoute(url: string | undefined): boolean {
   const pathname = url?.split("?")[0] ?? "";
-  if (!pathname || pathname.startsWith("/api/") || pathname.startsWith("/@")) return false;
+  if (
+    !pathname ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/p/") ||
+    pathname.startsWith("/@")
+  )
+    return false;
   if (pathname.startsWith("/src/") || pathname.startsWith("/node_modules/")) return false;
   return !pathname.split("/").pop()?.includes(".");
 }
