@@ -87,6 +87,29 @@ var en = {
   plans: "Plans",
   payment: "Payment",
   book: "Book",
+  bookHeading: (name) => `Book ${name}`,
+  bookDepositNote: "PayID deposit required (demo)",
+  bookPhoneNote: "Leave a phone number to book (demo)",
+  fieldTime: "Time",
+  fieldPhone: "Phone",
+  phonePlaceholder: "04xx (demo)",
+  createOrderLabel: "Create order",
+  pageMissing: "Page not found",
+  noBookings: "No bookings yet",
+  orderMissing: "Order not found",
+  guestPhoneLine: (phone) => `Phone ${phone}`,
+  depositDue: (amount, label) => `Deposit ${amount} (demo) \xB7 ${label}`,
+  noDeposit: "No deposit",
+  fieldNote: "Note",
+  attachShot: "Attach a screenshot",
+  iPaid: "I've paid",
+  waitingConfirm: "Waiting for her to confirm.",
+  contactsReleased: "She confirmed the payment",
+  channelWechat: "WeChat",
+  channelSms: "SMS",
+  record: "Record",
+  demoMenu: "Demo",
+  simulateTimeout: "Simulate timeout",
   desk: "Operations",
   fieldName: "Name",
   fieldCity: "City",
@@ -283,6 +306,44 @@ var PUBLIC_EN = {
     paymentLabels: []
   }
 };
+var NAMES = {
+  \u665A\u68E0: "Wantang",
+  \u6F84\u6708: "Chengyue",
+  \u963F\u68A8: "Ali",
+  \u9648\u4E88\u5B89: "Chen Yu'an"
+};
+var PAY_LABEL = {
+  \u94F6\u884C\u8F6C\u8D26: "Bank transfer"
+};
+var AUDIT = {
+  \u521B\u5EFA\u8BA2\u5355: "Order created",
+  \u5BA2\u4EBA\u8868\u793A\u5DF2\u4ED8\u6B3E: "Guest said they paid",
+  \u6A21\u7279\u786E\u8BA4\u5230\u8D26: "She confirmed the payment",
+  \u6A21\u7279\u8868\u793A\u672A\u6536\u5230: "She said it did not arrive",
+  "\u4ED8\u6B3E\u8D85\u65F6\uFF0C\u8BA2\u5355\u53D6\u6D88": "Payment timed out. Order cancelled",
+  \u8BA2\u5355\u5B8C\u6210: "Order completed"
+};
+function localizeOrderView(order, lang) {
+  if (lang !== "en") return order;
+  const paymentLabel = PAY_LABEL[order.paymentLabel] ?? order.paymentLabel;
+  return {
+    ...order,
+    stageName: NAMES[order.stageName] ?? order.stageName,
+    startsAt: englishWhen(order.startsAt),
+    statusLabel: STATUS[order.status] ?? order.statusLabel,
+    note: NOTES[order.note] ?? order.note,
+    paymentLabel,
+    payment: order.payment ? {
+      ...order.payment,
+      label: PAY_LABEL[order.payment.label] ?? order.payment.label,
+      accountName: NAMES[order.payment.accountName] ?? order.payment.accountName
+    } : null,
+    audits: order.audits.map((entry) => ({
+      ...entry,
+      action: AUDIT[entry.action] ?? entry.action
+    }))
+  };
+}
 function localizePublicProfile(profile, lang) {
   if (lang !== "en") return profile;
   const translated = PUBLIC_EN[profile.slug];
@@ -1348,10 +1409,10 @@ async function dispatch(state, body) {
     return json(next, {});
   }
   if (op === "profiles") {
-    const lang = parseLang(body.lang);
+    const lang2 = parseLang(body.lang);
     return json(state, {
       profiles: searchProfiles(state, stringField(body.q)).map(
-        (profile) => localizePublicProfile(profile, lang)
+        (profile) => localizePublicProfile(profile, lang2)
       )
     });
   }
@@ -1365,11 +1426,18 @@ async function dispatch(state, body) {
     });
   }
   if (op === "checkout") {
+    const lang2 = parseLang(body.lang);
     const result = checkout(state, stringField(body.slug));
     if (!result) return fail(state, "\u627E\u4E0D\u5230\u4E3B\u9875", 404);
+    const profile = localizePublicProfile(result.profile, lang2);
     return json(state, {
-      ...result,
-      profile: localizePublicProfile(result.profile, parseLang(body.lang))
+      profile,
+      depositAmount: result.depositAmount,
+      payid: result.payid ? {
+        ...result.payid,
+        label: lang2 === "en" && result.payid.label === "\u94F6\u884C\u8F6C\u8D26" ? "Bank transfer" : result.payid.label,
+        accountName: lang2 === "en" ? profile.stageName : result.payid.accountName
+      } : null
     });
   }
   if (op === "studio") {
@@ -1415,13 +1483,18 @@ async function dispatch(state, body) {
     if (!payload) return fail(booked.state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);
     return json(booked.state, payload);
   }
-  if (op === "orders") return json(state, { orders: listOrders(state) });
+  if (op === "orders") {
+    const lang2 = parseLang(body.lang);
+    return json(state, {
+      orders: listOrders(state).map((order2) => localizeOrderView(order2, lang2))
+    });
+  }
   if (op === "order") {
     const order2 = state.orders.find((item) => item.id === stringField(body.id));
     if (!order2) return fail(state, "\u627E\u4E0D\u5230\u8BA2\u5355", 404);
     const view2 = presentOrder(state, order2, true);
     if (!view2) return fail(state, "\u627E\u4E0D\u5230\u8BA2\u5355", 404);
-    return json(state, { order: view2 });
+    return json(state, { order: localizeOrderView(view2, parseLang(body.lang)) });
   }
   if (op === "setDeposit") {
     const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
@@ -1440,9 +1513,12 @@ async function dispatch(state, body) {
     if (!created.ok) return fail(state, created.error, 403);
     const order2 = created.state.orders.find((item) => item.id === created.orderId);
     const view2 = order2 ? presentOrder(created.state, order2, true) : null;
-    return json(created.state, { order: view2 });
+    return json(created.state, {
+      order: view2 ? localizeOrderView(view2, parseLang(body.lang)) : null
+    });
   }
   const orderId = stringField(body.id);
+  const lang = parseLang(body.lang);
   const mutated = op === "pay" ? markPaid(state, orderId, {
     note: stringField(body.note),
     screenshotAttached: body.screenshotAttached === true
@@ -1451,7 +1527,7 @@ async function dispatch(state, body) {
   if (!mutated) return fail(state, "\u8FD9\u4E2A\u8BA2\u5355\u4E0D\u80FD\u8FD9\u6837\u53D8\u66F4", 409);
   const order = mutated.orders.find((item) => item.id === orderId);
   const view = order ? presentOrder(mutated, order, true) : null;
-  return json(mutated, { order: view });
+  return json(mutated, { order: view ? localizeOrderView(view, lang) : null });
 }
 function dashboardPayload(state, lang = "zh") {
   const view = dashboard(state);

@@ -1,5 +1,5 @@
 import type { Lang } from "../copy";
-import { localizeDashboard, localizePublicProfile, parseLang } from "../copy";
+import { localizeDashboard, localizeOrderView, localizePublicProfile, parseLang } from "../copy";
 import type { DemoState, ProfileDraft } from "../domain";
 import {
   acknowledgeInquiry,
@@ -88,11 +88,23 @@ async function dispatch(
     });
   }
   if (op === "checkout") {
+    const lang = parseLang(body.lang);
     const result = checkout(state, stringField(body.slug));
     if (!result) return fail(state, "找不到主页", 404);
+    const profile = localizePublicProfile(result.profile, lang);
     return json(state, {
-      ...result,
-      profile: localizePublicProfile(result.profile, parseLang(body.lang)),
+      profile,
+      depositAmount: result.depositAmount,
+      payid: result.payid
+        ? {
+            ...result.payid,
+            label:
+              lang === "en" && result.payid.label === "银行转账"
+                ? "Bank transfer"
+                : result.payid.label,
+            accountName: lang === "en" ? profile.stageName : result.payid.accountName,
+          }
+        : null,
     });
   }
   if (op === "studio") {
@@ -138,13 +150,18 @@ async function dispatch(
     if (!payload) return fail(booked.state, "请切换到模特", 403);
     return json(booked.state, payload);
   }
-  if (op === "orders") return json(state, { orders: listOrders(state) });
+  if (op === "orders") {
+    const lang = parseLang(body.lang);
+    return json(state, {
+      orders: listOrders(state).map((order) => localizeOrderView(order, lang)),
+    });
+  }
   if (op === "order") {
     const order = state.orders.find((item) => item.id === stringField(body.id));
     if (!order) return fail(state, "找不到订单", 404);
     const view = presentOrder(state, order, true);
     if (!view) return fail(state, "找不到订单", 404);
-    return json(state, { order: view });
+    return json(state, { order: localizeOrderView(view, parseLang(body.lang)) });
   }
   if (op === "setDeposit") {
     const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
@@ -163,9 +180,12 @@ async function dispatch(
     if (!created.ok) return fail(state, created.error, 403);
     const order = created.state.orders.find((item) => item.id === created.orderId);
     const view = order ? presentOrder(created.state, order, true) : null;
-    return json(created.state, { order: view });
+    return json(created.state, {
+      order: view ? localizeOrderView(view, parseLang(body.lang)) : null,
+    });
   }
   const orderId = stringField(body.id);
+  const lang = parseLang(body.lang);
   const mutated =
     op === "pay"
       ? markPaid(state, orderId, {
@@ -185,7 +205,7 @@ async function dispatch(
   if (!mutated) return fail(state, "这个订单不能这样变更", 409);
   const order = mutated.orders.find((item) => item.id === orderId);
   const view = order ? presentOrder(mutated, order, true) : null;
-  return json(mutated, { order: view });
+  return json(mutated, { order: view ? localizeOrderView(view, lang) : null });
 }
 
 function dashboardPayload(state: DemoState, lang: Lang = "zh") {

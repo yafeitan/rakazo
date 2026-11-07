@@ -69,6 +69,19 @@ describe("missbunny http", () => {
     expect(withoutToken(profile.body ?? {})).not.toContain("payid-wantang-private");
     expect(field(profile.body, "profile")).not.toHaveProperty("depositAmount");
     expect(field(open.body, "depositAmount")).toBe(100);
+    const chinese = field<{ stageName: string }>(open.body, "profile");
+    expect(chinese.stageName).toBe("晚棠");
+    const english = await post("checkout", token, { slug: "wantang", lang: "en" });
+    expect(field<{ stageName: string }>(english.body, "profile").stageName).toBe("Wantang");
+    expect(field<{ accountName: string }>(english.body, "payid").accountName).toBe("Wantang");
+    const translated = await post("order", token, { id: "order-pending", lang: "en" });
+    const viewed = field<{ statusLabel: string; startsAt: string; stageName: string }>(
+      translated.body,
+      "order",
+    );
+    expect(viewed.statusLabel).toBe("Awaiting payment");
+    expect(viewed.startsAt).toBe("Fri 19:30");
+    expect(viewed.stageName).toBe("Wantang");
 
     const pending = await post("order", token, { id: "order-pending" });
     expect(withoutToken(pending.body ?? {})).not.toContain("wx-wantang-private");

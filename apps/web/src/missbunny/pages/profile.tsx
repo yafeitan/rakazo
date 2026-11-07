@@ -55,7 +55,7 @@ export function ProfilePage() {
         </p>
       ) : null}
       <Link
-        to={`/models/${profile.slug}/book`}
+        to={lang === "en" ? `/models/${profile.slug}/book?lang=en` : `/models/${profile.slug}/book`}
         className={`${buttonVariants({ size: "lg" })} w-fit`}
       >
         {copy.book}

@@ -76,6 +76,29 @@ export type Copy = {
   plans: string;
   payment: string;
   book: string;
+  bookHeading: (name: string) => string;
+  bookDepositNote: string;
+  bookPhoneNote: string;
+  fieldTime: string;
+  fieldPhone: string;
+  phonePlaceholder: string;
+  createOrderLabel: string;
+  pageMissing: string;
+  noBookings: string;
+  orderMissing: string;
+  guestPhoneLine: (phone: string) => string;
+  depositDue: (amount: string, label: string) => string;
+  noDeposit: string;
+  fieldNote: string;
+  attachShot: string;
+  iPaid: string;
+  waitingConfirm: string;
+  contactsReleased: string;
+  channelWechat: string;
+  channelSms: string;
+  record: string;
+  demoMenu: string;
+  simulateTimeout: string;
   desk: string;
   fieldName: string;
   fieldCity: string;
@@ -236,6 +259,29 @@ const zh: Copy = {
   plans: "安排",
   payment: "收款",
   book: "预约",
+  bookHeading: (name) => `预约 ${name}`,
+  bookDepositNote: "需要 PayID 订金（演示）",
+  bookPhoneNote: "留下电话即可预约（演示）",
+  fieldTime: "时间",
+  fieldPhone: "电话",
+  phonePlaceholder: "04xx（演示）",
+  createOrderLabel: "生成订单",
+  pageMissing: "找不到主页",
+  noBookings: "还没有预约",
+  orderMissing: "找不到订单",
+  guestPhoneLine: (phone) => `电话 ${phone}`,
+  depositDue: (amount, label) => `订金 ${amount}（演示）· ${label}`,
+  noDeposit: "未收订金",
+  fieldNote: "备注",
+  attachShot: "附上截图",
+  iPaid: "我已付款",
+  waitingConfirm: "等待她确认到账。",
+  contactsReleased: "她确认收款了",
+  channelWechat: "微信",
+  channelSms: "短信",
+  record: "记录",
+  demoMenu: "演示",
+  simulateTimeout: "模拟超时",
   desk: "运营",
   fieldName: "艺名",
   fieldCity: "城市",
@@ -417,6 +463,29 @@ const en: Copy = {
   plans: "Plans",
   payment: "Payment",
   book: "Book",
+  bookHeading: (name) => `Book ${name}`,
+  bookDepositNote: "PayID deposit required (demo)",
+  bookPhoneNote: "Leave a phone number to book (demo)",
+  fieldTime: "Time",
+  fieldPhone: "Phone",
+  phonePlaceholder: "04xx (demo)",
+  createOrderLabel: "Create order",
+  pageMissing: "Page not found",
+  noBookings: "No bookings yet",
+  orderMissing: "Order not found",
+  guestPhoneLine: (phone) => `Phone ${phone}`,
+  depositDue: (amount, label) => `Deposit ${amount} (demo) · ${label}`,
+  noDeposit: "No deposit",
+  fieldNote: "Note",
+  attachShot: "Attach a screenshot",
+  iPaid: "I've paid",
+  waitingConfirm: "Waiting for her to confirm.",
+  contactsReleased: "She confirmed the payment",
+  channelWechat: "WeChat",
+  channelSms: "SMS",
+  record: "Record",
+  demoMenu: "Demo",
+  simulateTimeout: "Simulate timeout",
   desk: "Operations",
   fieldName: "Name",
   fieldCity: "City",
@@ -673,6 +742,90 @@ const PUBLIC_EN: Record<string, Omit<PublicText, "slug">> = {
     paymentLabels: [],
   },
 };
+
+const NAMES: Record<string, string> = {
+  晚棠: "Wantang",
+  澄月: "Chengyue",
+  阿梨: "Ali",
+  陈予安: "Chen Yu'an",
+};
+
+export function localizePerson(name: string, lang: Lang): string {
+  if (lang !== "en") return name;
+  return NAMES[name] ?? name;
+}
+
+const PAY_LABEL: Record<string, string> = {
+  银行转账: "Bank transfer",
+};
+
+const AUDIT: Record<string, string> = {
+  创建订单: "Order created",
+  客人表示已付款: "Guest said they paid",
+  模特确认到账: "She confirmed the payment",
+  模特表示未收到: "She said it did not arrive",
+  "付款超时，订单取消": "Payment timed out. Order cancelled",
+  订单完成: "Order completed",
+};
+
+const ERRORS: Record<string, string> = {
+  找不到主页: "Page not found",
+  没有完成: "Didn't finish",
+  找不到订单: "Order not found",
+  请留下电话: "Leave a phone number",
+  请选择时间: "Choose a time",
+  找不到可预约的主页: "That page is not open for booking",
+  "她还没有设置 PayID": "She has not set up PayID",
+  请以客人身份预约: "Switch to the guest to book",
+  这个订单不能这样变更: "This order cannot change that way",
+};
+
+/** Weekday labels for a stored slot such as 周四 19:00. The stored value stays Chinese. */
+export function localizeSlot(value: string, lang: Lang): string {
+  if (lang !== "en") return value;
+  return englishWhen(value);
+}
+
+export function guestMessage(message: string, lang: Lang): string {
+  if (lang !== "en") return message;
+  return ERRORS[message] ?? message;
+}
+
+type GuestOrder = {
+  stageName: string;
+  startsAt: string;
+  status: string;
+  statusLabel: string;
+  note: string;
+  paymentLabel: string;
+  payment: { label: string; accountName: string; reference: string; amount: number } | null;
+  audits: { action: string }[];
+};
+
+/** English is a view of the same order. Stored orders stay Chinese. */
+export function localizeOrderView<T extends GuestOrder>(order: T, lang: Lang): T {
+  if (lang !== "en") return order;
+  const paymentLabel = PAY_LABEL[order.paymentLabel] ?? order.paymentLabel;
+  return {
+    ...order,
+    stageName: NAMES[order.stageName] ?? order.stageName,
+    startsAt: englishWhen(order.startsAt),
+    statusLabel: STATUS[order.status] ?? order.statusLabel,
+    note: NOTES[order.note] ?? order.note,
+    paymentLabel,
+    payment: order.payment
+      ? {
+          ...order.payment,
+          label: PAY_LABEL[order.payment.label] ?? order.payment.label,
+          accountName: NAMES[order.payment.accountName] ?? order.payment.accountName,
+        }
+      : null,
+    audits: order.audits.map((entry) => ({
+      ...entry,
+      action: AUDIT[entry.action] ?? entry.action,
+    })),
+  };
+}
 
 /** English wording for the seeded public profiles. Stored profiles stay Chinese. */
 export function localizePublicProfile<T extends PublicText>(profile: T, lang: Lang): T {

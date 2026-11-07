@@ -4,22 +4,19 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { OrderView } from "../api";
 import { call } from "../api";
+import { guestMessage } from "../copy";
+import { formatAud } from "../domain";
+import { useLocale } from "../locale";
 import { useDemo } from "../shell";
-
-const CHANNELS = [
-  ["wechat", "微信"],
-  ["telegram", "Telegram"],
-  ["whatsapp", "WhatsApp"],
-  ["sms", "短信"],
-] as const;
 
 export function OrdersPage() {
   const { apply } = useDemo();
+  const { lang, copy } = useLocale();
   const [orders, setOrders] = useState<OrderView[]>([]);
 
   useEffect(() => {
     let active = true;
-    void call<{ orders: OrderView[] }>("orders").then((body) => {
+    void call<{ orders: OrderView[] }>("orders", { lang }).then((body) => {
       if (!active) return;
       apply(body.shell);
       setOrders(body.orders);
@@ -27,16 +24,16 @@ export function OrdersPage() {
     return () => {
       active = false;
     };
-  }, [apply]);
+  }, [apply, lang]);
 
-  if (orders.length === 0) return <p className="pt-8 text-muted-foreground">还没有预约</p>;
+  if (orders.length === 0) return <p className="pt-8 text-muted-foreground">{copy.noBookings}</p>;
 
   return (
     <ul className="flex flex-col gap-2 pt-4">
       {orders.map((order) => (
         <li key={order.id}>
           <Link
-            to={`/bookings/${order.id}`}
+            to={lang === "en" ? `/bookings/${order.id}?lang=en` : `/bookings/${order.id}`}
             className="flex items-center justify-between gap-3 rounded-xl px-4 py-3 ring-1 ring-foreground/10"
           >
             <span>
@@ -54,6 +51,7 @@ export function OrdersPage() {
 export function OrderPage() {
   const { id = "" } = useParams();
   const { apply, shell } = useDemo();
+  const { lang, copy } = useLocale();
   const [order, setOrder] = useState<OrderView | null>(null);
   const [note, setNote] = useState("");
   const [screenshot, setScreenshot] = useState(false);
@@ -67,27 +65,30 @@ export function OrderPage() {
 
   useEffect(() => {
     let active = true;
-    void call<{ order: OrderView }>("order", { id })
+    void call<{ order: OrderView }>("order", { id, lang })
       .then((body) => {
         if (!active) return;
         take(body);
       })
       .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : "找不到订单");
+        if (!active) return;
+        const message = reason instanceof Error ? reason.message : copy.orderMissing;
+        setError(guestMessage(message, lang));
       });
     return () => {
       active = false;
     };
-  }, [apply, id]);
+  }, [apply, copy.orderMissing, id, lang]);
 
   async function act(op: string, extra: Record<string, unknown> = {}) {
     setPending(true);
     setError(null);
     try {
-      const body = await call<{ order: OrderView }>(op, { id, ...extra });
+      const body = await call<{ order: OrderView }>(op, { id, lang, ...extra });
       take(body);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "没有完成");
+      const message = reason instanceof Error ? reason.message : copy.notFinished;
+      setError(guestMessage(message, lang));
     } finally {
       setPending(false);
     }
@@ -110,21 +111,21 @@ export function OrderPage() {
           {order.stageName} · {order.startsAt}
         </h1>
       </header>
-      {order.guestPhone ? <p>电话 {order.guestPhone}</p> : null}
+      {order.guestPhone ? <p>{copy.guestPhoneLine(order.guestPhone)}</p> : null}
       {order.depositAmount > 0 && order.payment ? (
         <p>
-          订金 A${order.depositAmount}（演示）· {order.payment.label}
+          {copy.depositDue(formatAud(order.depositAmount), order.payment.label)}
           <span className="mt-1 block text-muted-foreground">
             {order.payment.accountName} · {order.payment.reference}
           </span>
         </p>
       ) : (
-        <p className="text-muted-foreground">未收订金</p>
+        <p className="text-muted-foreground">{copy.noDeposit}</p>
       )}
       {order.status === "PENDING_PAYMENT" && guest ? (
         <form onSubmit={(event) => void pay(event)} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="note">备注</Label>
+            <Label htmlFor="note">{copy.fieldNote}</Label>
             <Input
               id="note"
               value={note}
@@ -138,21 +139,28 @@ export function OrderPage() {
               checked={screenshot}
               onChange={(event) => setScreenshot(event.target.checked)}
             />
-            附上截图
+            {copy.attachShot}
           </label>
           <Button type="submit" size="xl" disabled={pending}>
-            我已付款
+            {copy.iPaid}
           </Button>
         </form>
       ) : null}
       {order.status === "AWAITING_MODEL_CONFIRM" ? (
-        <p className="text-muted-foreground">等待她确认到账。</p>
+        <p className="text-muted-foreground">{copy.waitingConfirm}</p>
       ) : null}
       {order.contacts ? (
         <section>
-          <h2 className="text-body-lg font-medium">她确认收款了</h2>
+          <h2 className="text-body-lg font-medium">{copy.contactsReleased}</h2>
           <ul className="mt-3 flex flex-col gap-2">
-            {CHANNELS.map(([key, label]) =>
+            {(
+              [
+                ["wechat", copy.channelWechat],
+                ["telegram", "Telegram"],
+                ["whatsapp", "WhatsApp"],
+                ["sms", copy.channelSms],
+              ] as const
+            ).map(([key, label]) =>
               order.contacts?.[key] ? (
                 <li key={key} className="flex justify-between gap-3">
                   <span className="text-muted-foreground">{label}</span>
@@ -164,7 +172,7 @@ export function OrderPage() {
         </section>
       ) : null}
       {error ? <p className="text-destructive">{error}</p> : null}
-      <Disclosure summary={<span className="text-muted-foreground">记录</span>}>
+      <Disclosure summary={<span className="text-muted-foreground">{copy.record}</span>}>
         <ul className="mt-3 flex flex-col gap-2 text-muted-foreground">
           {order.audits.map((entry) => (
             <li key={entry.id}>{entry.action}</li>
@@ -172,7 +180,7 @@ export function OrderPage() {
         </ul>
       </Disclosure>
       {order.status === "PENDING_PAYMENT" && guest ? (
-        <Disclosure summary={<span className="text-muted-foreground">演示</span>}>
+        <Disclosure summary={<span className="text-muted-foreground">{copy.demoMenu}</span>}>
           <Button
             type="button"
             variant="text"
@@ -180,7 +188,7 @@ export function OrderPage() {
             disabled={pending}
             onClick={() => void act("timeout")}
           >
-            模拟超时
+            {copy.simulateTimeout}
           </Button>
         </Disclosure>
       ) : null}

@@ -33,6 +33,7 @@ test("missbunny opens the guest booking flows and the model dashboard", async ({
   await page.goto("/models/chengyue/book");
   await expect(page.getByRole("heading", { name: "预约 澄月" })).toBeVisible();
   await expect(page.getByText("留下电话即可预约（演示）")).toBeVisible();
+  await expect(page.getByRole("button", { name: "周四 19:00" })).toBeVisible();
 
   await page.goto("/demo");
   await page.getByRole("button", { name: "以模特查看引擎" }).click();
@@ -160,6 +161,27 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
   await expect(page.getByRole("heading", { name: "Top up credits" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pay A$200 now" })).toBeEnabled();
   await expect(page.getByText("Total due")).toBeVisible();
+});
+
+test("an english guest booking stays english through payment", async ({ page }) => {
+  await page.goto("/demo?lang=en");
+  await page.getByRole("link", { name: "Wantang · PayID deposit" }).click();
+  await expect(page).toHaveURL(/\/models\/wantang\/book\?lang=en/);
+  await expect(page.getByRole("heading", { name: "Book Wantang" })).toBeVisible();
+  await expect(page.getByLabel("Role")).toContainText("Chen Yu'an");
+  await expect(page.getByText("PayID deposit required (demo)")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Thu 19:00" })).toBeVisible();
+  await expect(page.getByText("周四")).toHaveCount(0);
+  await page.getByLabel("Phone").fill("0412345678");
+  await page.getByRole("button", { name: "Create order" }).click();
+  await expect(page).toHaveURL(/\/bookings\/.+lang=en/);
+  await expect(page.getByText("Awaiting payment")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Wantang · Thu 19:00" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "I've paid" })).toBeVisible();
+  await expect(page.getByText(/周[一二三四五六日]|订金|电话|我已付款/)).toHaveCount(0);
+  await page.getByRole("button", { name: "I've paid" }).click();
+  await expect(page.getByText("Waiting for her to confirm.")).toBeVisible();
+  await expect(page.getByText("Waiting for her to confirm").first()).toBeVisible();
 });
 
 test("a public profile stays off the operating system origin", async ({ page }) => {

@@ -5,6 +5,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Shimmer } from "../components/ai/primitives";
 import type { ShellInfo } from "./api";
 import { call } from "./api";
+import { localizePerson } from "./copy";
 import { LanguageToggle, useLocale } from "./locale";
 
 type DemoContextValue = {
@@ -38,7 +39,7 @@ function Mark() {
 
 export function Shell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const { copy } = useLocale();
+  const { lang, copy } = useLocale();
   const [shell, setShell] = useState<ShellInfo | null>(null);
   const [error, setError] = useState(false);
 
@@ -136,7 +137,7 @@ export function Shell({ children }: { children: ReactNode }) {
               }}
             >
               <NativeSelectOption value="user">
-                {copy.guest} · {session.userName}
+                {copy.guest} · {localizePerson(session.userName, lang)}
               </NativeSelectOption>
               <NativeSelectOption value="model">{copy.model}</NativeSelectOption>
             </NativeSelect>

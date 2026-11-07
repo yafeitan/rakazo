@@ -4,7 +4,8 @@ import { useLocale } from "../locale";
 import { OnboardingFlow } from "./onboarding-flow";
 
 export function DemoPage() {
-  const { copy } = useLocale();
+  const { lang, copy } = useLocale();
+  const search = lang === "en" ? "?lang=en" : "";
 
   function openEngine() {
     document.getElementById("join")?.scrollIntoView();
@@ -26,10 +27,10 @@ export function DemoPage() {
         {copy.browseAsGuest}
       </Link>
       <div className="mt-4 flex flex-col items-center gap-2">
-        <Link to="/models/wantang/book" className={buttonVariants({ variant: "text" })}>
+        <Link to={`/models/wantang/book${search}`} className={buttonVariants({ variant: "text" })}>
           {copy.wantangDeposit}
         </Link>
-        <Link to="/models/chengyue/book" className={buttonVariants({ variant: "text" })}>
+        <Link to={`/models/chengyue/book${search}`} className={buttonVariants({ variant: "text" })}>
           {copy.chengyuePhone}
         </Link>
       </div>
