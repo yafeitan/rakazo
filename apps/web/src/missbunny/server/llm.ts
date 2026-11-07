@@ -1,5 +1,5 @@
-import type { ProfileDraft } from "../domain.js";
-import { templateBio } from "../domain.js";
+import type { ProfileDraft } from "../domain";
+import { templateBio } from "../domain";
 
 type Env = Record<string, string | undefined>;
 

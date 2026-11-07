@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import type { DemoState } from "../domain.js";
-import { seedState } from "../seed.js";
+import type { DemoState } from "../domain";
+import { seedState } from "../seed";
 
 const SECRET = process.env.MISSBUNNY_STATE_SECRET ?? "missbunny-demo";
 

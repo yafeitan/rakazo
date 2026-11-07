@@ -15,8 +15,8 @@ import {
   setRole,
   simulateTimeout,
   templateBio,
-} from "./domain.js";
-import { PRIVATE_MARKERS, seedState } from "./seed.js";
+} from "./domain";
+import { PRIVATE_MARKERS, seedState } from "./seed";
 
 const contactMarkers = PRIVATE_MARKERS.filter(
   (marker) => !marker.startsWith("payid") && !marker.startsWith("bank"),

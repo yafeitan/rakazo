@@ -1,5 +1,5 @@
-import type { AuditEntry, DemoState, EngineEntry, Order, Profile } from "./domain.js";
-import { DEMO_USER_ID, DEMO_USER_NAME } from "./domain.js";
+import type { AuditEntry, DemoState, EngineEntry, Order, Profile } from "./domain";
+import { DEMO_USER_ID, DEMO_USER_NAME } from "./domain";
 
 export const PRIVATE_MARKERS = [
   "wx-wantang-private",
@@ -171,11 +171,7 @@ export function seedState(now = new Date()): DemoState {
     orders,
     audits,
     engineLog: [
-      ...lines(
-        "wantang",
-        ["阅读了档案", "发布了主页", "把一位预约放进待确认", "更新了账本"],
-        at,
-      ),
+      ...lines("wantang", ["阅读了档案", "发布了主页", "把一位预约放进待确认", "更新了账本"], at),
       ...lines("chengyue", ["核对了可约时间", "主页保持可浏览"], at),
     ],
   };

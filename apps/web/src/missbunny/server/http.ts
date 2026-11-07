@@ -1,4 +1,4 @@
-import type { DemoState, ProfileDraft } from "../domain.js";
+import type { DemoState, ProfileDraft } from "../domain";
 import {
   acceptInvite,
   applyTimeouts,
@@ -20,9 +20,9 @@ import {
   setRole,
   simulateTimeout,
   toPublicProfile,
-} from "../domain.js";
-import { generateProfileCopy } from "./llm.js";
-import { decodeState, encodeState } from "./store.js";
+} from "../domain";
+import { generateProfileCopy } from "./llm";
+import { decodeState, encodeState } from "./store";
 
 type Payload = Record<string, unknown>;
 

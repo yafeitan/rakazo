@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Connect, PreviewServer, ViteDevServer } from "vite";
-import { handleMissbunny } from "./http.js";
+import { handleMissbunny } from "./http";
 
 async function toRequest(req: IncomingMessage): Promise<Request> {
   const host = req.headers.host ?? "localhost";

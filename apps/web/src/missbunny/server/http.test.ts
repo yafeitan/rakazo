@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { emptyDraft } from "../domain.js";
-import { PRIVATE_MARKERS } from "../seed.js";
-import { handleMissbunny } from "./http.js";
-import { generateProfileCopy } from "./llm.js";
+import { emptyDraft } from "../domain";
+import { PRIVATE_MARKERS } from "../seed";
+import { handleMissbunny } from "./http";
+import { generateProfileCopy } from "./llm";
 
 function orderFrom(body: unknown) {
   const order = body && typeof body === "object" && "order" in body ? body.order : undefined;
