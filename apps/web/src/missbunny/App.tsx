@@ -6,6 +6,7 @@ import { DashboardPage } from "./pages/dashboard";
 import { EnginePage } from "./pages/engine";
 import { HomePage } from "./pages/home";
 import { DemoPage } from "./pages/landing";
+import { OpsPage } from "./pages/ops";
 import { OrderPage, OrdersPage } from "./pages/orders";
 import { ProfilePage } from "./pages/profile";
 import { StudioPage } from "./pages/studio";
@@ -26,6 +27,7 @@ export function App() {
           <Route path="/bookings/:id" element={<OrderPage />} />
           <Route path="/studio" element={<StudioPage />} />
           <Route path="/studio/engine" element={<EnginePage />} />
+          <Route path="/studio/ops" element={<OpsPage />} />
           <Route path="/studio/dashboard" element={<DashboardPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

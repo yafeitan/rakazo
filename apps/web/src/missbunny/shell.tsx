@@ -81,7 +81,7 @@ export function Shell({ children }: { children: ReactNode }) {
     const body = await call("session", { role, modelId });
     setShell(body.shell);
     if (role === "model" && (modelId === "new" || modelId === "")) navigate("/studio");
-    else if (role === "model") navigate("/studio/dashboard");
+    else if (role === "model") navigate("/studio/ops");
     else navigate("/models");
   }
 
@@ -110,10 +110,10 @@ export function Shell({ children }: { children: ReactNode }) {
             ) : (
               <>
                 <NavLink
-                  to="/studio/dashboard"
+                  to="/studio/ops"
                   className={({ isActive }) => (isActive ? "text-foreground" : undefined)}
                 >
-                  {copy.today}
+                  {copy.desk}
                 </NavLink>
                 <NavLink
                   to="/studio"

@@ -15,15 +15,11 @@ test("missbunny opens the guest booking flows and the model dashboard", async ({
   await expect(page.getByText("我们不经手。")).toBeVisible();
   await expect(page.getByText("大约 A$300–600。")).toBeVisible();
   await expect(page.getByText("工具费")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "继续" })).toBeDisabled();
-  await page.getByRole("button", { name: "自运营" }).click();
-  await expect(page.getByRole("button", { name: "继续" })).toBeEnabled();
-  await expect(page.getByText("IVY")).toHaveCount(0);
-  await expect(page.getByText("绑定 X")).toHaveCount(0);
+  await expect(page.getByLabel("艺名")).toBeVisible();
+  await expect(page.getByRole("button", { name: "继续" })).toHaveCount(0);
 
   await page.goto("/demo");
   await expect(page.getByText("AI 员工要每天有稳定的询问。")).toBeVisible();
-  await expect(page.getByRole("button", { name: "继续" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "missbunny" })).toBeVisible();
   await expect(page.getByText("不服务经纪公司")).toBeVisible();
   await expect(page.getByRole("link", { name: "晚棠 · PayID 订金" })).toBeVisible();
@@ -40,13 +36,12 @@ test("missbunny opens the guest booking flows and the model dashboard", async ({
 
   await page.goto("/demo");
   await page.getByRole("button", { name: "以模特查看引擎" }).click();
-  await expect(page.getByRole("heading", { name: "订金" })).toBeVisible();
-  await expect(page.getByText("PayID A$100（演示）")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "月费" })).toBeVisible();
-  await expect(page.getByText("A$420")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "运营" })).toBeVisible();
+  await expect(page.getByText("本月已收")).toBeVisible();
+  await expect(page.getByText("待收订金")).toBeVisible();
+  await expect(page.getByRole("button", { name: "充值" })).toBeVisible();
   await expect(page.getByText("工具费")).toHaveCount(0);
-  await expect(page.getByText("A$80")).toHaveCount(0);
-  await expect(page.getByText("只用你资料里的内容回答，不编")).toBeVisible();
+  await expect(page.getByText("现在有空吗？想约一次。")).toBeVisible();
 });
 
 test("onboarding opens a scripted model desk and the public profile hides the deposit", async ({
@@ -58,16 +53,20 @@ test("onboarding opens a scripted model desk and the public profile hides the de
   await expect(page.getByText("PayID 订金")).toHaveCount(0);
 
   await page.goto("/home");
-  await page.getByRole("button", { name: "自运营" }).click();
-  await page.getByRole("button", { name: "继续" }).click();
-  await expect(page).toHaveURL(/\/studio\/dashboard\?aha=1/);
-  await expect(page.getByRole("heading", { name: "模特后台" })).toBeVisible();
-  await expect(page.getByText("周四晚上还有空吗？想约一次私人晚宴。")).toBeVisible();
-  await expect(page.getByText("私人晚宴可以安排")).toBeVisible();
+  await page.getByLabel("艺名").fill("晚棠");
+  await page.getByLabel("城市").fill("墨尔本");
+  await page.getByLabel("可约").fill("周四晚上");
+  await page.getByLabel("安排").fill("私人晚宴");
+  await page.getByLabel("收款方式").fill("PayID");
+  await expect(page).toHaveURL(/\/studio\/ops/);
+  await expect(page.getByRole("heading", { name: "运营" })).toBeVisible();
+  await expect(page.getByText("现在有空吗？想约一次。")).toBeVisible();
+  await expect(page.getByText("周四晚上可以。私人晚宴。")).toBeVisible();
   await expect(page.getByText("待付订金")).toBeVisible();
   await page.getByRole("button", { name: "已收款" }).click();
   await expect(page.getByText("0400 000 222（演示）")).toBeVisible();
   await expect(page.getByText("账本记入 PayID 订金 A$100（演示）")).toBeVisible();
+  await expect(page.getByText("A$100").first()).toBeVisible();
 });
 
 test("missbunny english covers the homepage, join flow, demo, and dashboard", async ({ page }) => {
@@ -86,33 +85,26 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
     "aria-pressed",
     "true",
   );
-  await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
-  await page.getByRole("button", { name: "Self-run" }).click();
-  await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
-  await expect(page.getByText("IVY")).toHaveCount(0);
-  await expect(page.getByText("Connect X")).toHaveCount(0);
+  await expect(page.getByLabel("Name")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
 
   await page.goto("/demo?lang=en");
   await expect(
     page.getByText("The AI employee needs a steady stream of inquiries every day."),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "missbunny" })).toBeVisible();
   await expect(page.getByText("not agencies")).toBeVisible();
   await expect(page.getByRole("link", { name: "Wantang · PayID deposit" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Chengyue · phone only" })).toBeVisible();
   await page.getByRole("button", { name: "Open the engine as the model" }).click();
-  await expect(page.getByRole("heading", { name: "Deposit" })).toBeVisible();
-  await expect(page.getByText("PayID A$100 (demo)")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Monthly fee" })).toBeVisible();
-  await expect(page.getByText("A$420")).toBeVisible();
-  await expect(page.getByText("AI usage, about A$300–600 · demo")).toBeVisible();
-  await expect(page.getByText("Answers only from your profile. Nothing invented.")).toBeVisible();
-  await expect(page.getByText("Are you free Thursday evening?")).toBeVisible();
-  await expect(page.getByText("Needs you to confirm")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Operations" })).toBeVisible();
+  await expect(page.getByText("Collected this month")).toBeVisible();
+  await expect(page.getByText("Pending deposits")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Top up" })).toBeVisible();
+  await expect(page.getByText("Are you free now? I’d like to book.")).toBeVisible();
   await expect(page.getByText("工具费")).toHaveCount(0);
   await page.getByRole("button", { name: "中文", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "订金" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "运营" })).toBeVisible();
   await expect(page).not.toHaveURL(/lang=en/);
 
   await page.goto("/models/wantang?lang=en");
@@ -122,11 +114,14 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
   await expect(page.getByText("PayID 订金")).toHaveCount(0);
 
   await page.goto("/home?lang=en");
-  await page.getByRole("button", { name: "Self-run" }).click();
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page).toHaveURL(/aha=1/);
-  await expect(page.getByRole("heading", { name: "Model desk" })).toBeVisible();
-  await expect(page.getByText("I’d like a private dinner.")).toBeVisible();
+  await page.getByLabel("Name").fill("Wantang");
+  await page.getByLabel("City").fill("Melbourne");
+  await page.getByLabel("Hours").fill("Thursday evening");
+  await page.getByLabel("Plans").fill("Private dinner");
+  await page.getByLabel("How you get paid").fill("PayID");
+  await expect(page).toHaveURL(/\/studio\/ops/);
+  await expect(page.getByRole("heading", { name: "Operations" })).toBeVisible();
+  await expect(page.getByText("Thursday evening works.")).toBeVisible();
   await expect(page.getByText("Deposit pending")).toBeVisible();
   await page.getByRole("button", { name: "Payment received" }).click();
   await expect(page.getByText("0400 000 222 (demo)")).toBeVisible();

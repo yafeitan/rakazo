@@ -8,12 +8,13 @@ import { OnboardingFlow } from "./onboarding-flow";
 export function DemoPage() {
   const navigate = useNavigate();
   const { apply } = useDemo();
-  const { copy } = useLocale();
+  const { lang, copy } = useLocale();
 
   async function openEngine() {
     const body = await call("session", { role: "model", modelId: "wantang" });
     apply(body.shell);
-    navigate("/studio/dashboard");
+    const params = new URLSearchParams(lang === "en" ? "lang=en" : "");
+    navigate({ pathname: "/studio/ops", search: params.toString() });
   }
 
   return (

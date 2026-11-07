@@ -77,6 +77,33 @@ export type Copy = {
   payment: string;
   book: string;
   desk: string;
+  fieldName: string;
+  fieldCity: string;
+  fieldWhen: string;
+  fieldServices: string;
+  fieldPay: string;
+  stillNeed: (list: string) => string;
+  openingDesk: string;
+  collected: string;
+  pendingDeposits: string;
+  usage: (count: number) => string;
+  feed: string;
+  todayDid: string;
+  updateProfile: string;
+  adjustSchedule: string;
+  push: string;
+  profileSaved: string;
+  scheduleSaved: string;
+  pushed: string;
+  guestAsk: string;
+  agentReply: (draft: { availability: string; services: string; payment: string }) => string;
+  agentDeposit: (payment: string) => string;
+  guestArrived: string;
+  replied: string;
+  startedWork: string;
+  qualified: string;
+  askedDeposit: string;
+  depositRecorded: string;
   demoBalance: string;
   topUp: string;
   topUpTitle: string;
@@ -184,7 +211,35 @@ const zh: Copy = {
   plans: "安排",
   payment: "收款",
   book: "预约",
-  desk: "模特后台",
+  desk: "运营",
+  fieldName: "艺名",
+  fieldCity: "城市",
+  fieldWhen: "可约",
+  fieldServices: "安排",
+  fieldPay: "收款方式",
+  stillNeed: (list) => `还要填写${list}`,
+  openingDesk: "正在打开工作台",
+  collected: "本月已收",
+  pendingDeposits: "待收订金",
+  usage: (count) => `今日用量 ${count}`,
+  feed: "正在进行",
+  todayDid: "今天 AI 做的",
+  updateProfile: "更新档案",
+  adjustSchedule: "调整时间",
+  push: "推一次",
+  profileSaved: "档案已更新（演示）",
+  scheduleSaved: "可约时间已调整（演示）",
+  pushed: "已按目标推了一次（演示）",
+  guestAsk: "现在有空吗？想约一次。",
+  agentReply: (draft) =>
+    `${draft.availability}可以。${draft.services}。请用${draft.payment}付 A$100 订金（演示）。到账后发联系方式。`,
+  agentDeposit: (payment) => `正在请客人用${payment}付订金。`,
+  guestArrived: "收到一条询问",
+  replied: "用她的口吻回复了",
+  startedWork: "开始干活",
+  qualified: "确认这是一次预约",
+  askedDeposit: "向客人要了订金",
+  depositRecorded: "订金已入账",
   demoBalance: "演示余额",
   topUp: "充值",
   topUpTitle: "充值额度",
@@ -303,7 +358,35 @@ const en: Copy = {
   plans: "Plans",
   payment: "Payment",
   book: "Book",
-  desk: "Model desk",
+  desk: "Operations",
+  fieldName: "Name",
+  fieldCity: "City",
+  fieldWhen: "Hours",
+  fieldServices: "Plans",
+  fieldPay: "How you get paid",
+  stillNeed: (list) => `Still needed: ${list}`,
+  openingDesk: "Opening the workspace",
+  collected: "Collected this month",
+  pendingDeposits: "Pending deposits",
+  usage: (count) => `Used today ${count}`,
+  feed: "Live",
+  todayDid: "Today the AI did this",
+  updateProfile: "Update profile",
+  adjustSchedule: "Adjust schedule",
+  push: "Push",
+  profileSaved: "Profile updated (demo)",
+  scheduleSaved: "Hours adjusted (demo)",
+  pushed: "Pushed toward her goal (demo)",
+  guestAsk: "Are you free now? I’d like to book.",
+  agentReply: (draft) =>
+    `${draft.availability} works. ${draft.services}. Please pay the A$100 deposit by ${draft.payment} (demo). Contact details follow once it arrives.`,
+  agentDeposit: (payment) => `Asking the guest to pay the deposit by ${payment}.`,
+  guestArrived: "Received an inquiry",
+  replied: "Replied in her voice",
+  startedWork: "Started working",
+  qualified: "Checked that this is a booking",
+  askedDeposit: "Asked the guest for the deposit",
+  depositRecorded: "Deposit recorded",
   demoBalance: "Demo balance",
   topUp: "Top up",
   topUpTitle: "Top up credits",
