@@ -1,0 +1,69 @@
+// Demo models for the operations preview.
+// The running preview does not open a database and does not read DATABASE_URL.
+// `client.ts` serves these shapes in memory. Swap that module for a generated
+// client only when a throwaway database is explicitly approved.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model DemoBot {
+  id           String  @id
+  name         String
+  role         String
+  sceneId      String?
+  status       String
+  modelSummary String
+  skillSummary String
+  description  String
+}
+
+model DemoMemory {
+  id     String @id
+  text   String
+  source String
+}
+
+model DemoSkill {
+  id      String @id
+  name    String
+  summary String
+}
+
+model DemoRoutine {
+  id      String @id
+  name    String
+  trigger String
+  summary String
+}
+
+model DemoTool {
+  id      String @id
+  name    String
+  status  String
+  summary String
+}
+
+model DemoComputer {
+  id      String @id
+  name    String
+  status  String
+  summary String
+}
+
+model DemoGuest {
+  id       String @id
+  name     String
+  whenText String
+  duration String
+  place    String
+  budget   String
+  source   String
+  trust    String
+  paid     Boolean
+}
