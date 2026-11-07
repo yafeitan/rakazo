@@ -1,16 +1,10 @@
 export type OnboardingBinds = {
   selfRun: boolean;
-  x: boolean;
-  ivy: boolean;
 };
 
-/** What still blocks 入驻. X and IVY are both required. */
+/** 入驻 waits only on choosing self-run. A connection is not a gate. */
 export function missingOnboarding(state: OnboardingBinds): string[] {
-  const missing: string[] = [];
-  if (!state.selfRun) missing.push("自运营");
-  if (!state.x) missing.push("X");
-  if (!state.ivy) missing.push("IVY");
-  return missing;
+  return state.selfRun ? [] : ["自运营"];
 }
 
 export function onboardingReady(state: OnboardingBinds): boolean {

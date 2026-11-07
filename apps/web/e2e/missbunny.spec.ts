@@ -17,16 +17,12 @@ test("missbunny opens the guest booking flows and the model dashboard", async ({
   await expect(page.getByText("工具费")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "继续" })).toBeDisabled();
   await page.getByRole("button", { name: "自运营" }).click();
-  await expect(page.getByText("还没绑定 X")).toBeVisible();
-  await expect(page.getByText("还没绑定 IVY")).toBeVisible();
-  await page.getByRole("button", { name: "绑定 X（演示）" }).click();
-  await expect(page.getByRole("button", { name: "继续" })).toBeDisabled();
-  await expect(page.getByText("还没绑定 IVY")).toBeVisible();
-  await page.getByRole("button", { name: "绑定 IVY（演示）" }).click();
   await expect(page.getByRole("button", { name: "继续" })).toBeEnabled();
+  await expect(page.getByText("IVY")).toHaveCount(0);
+  await expect(page.getByText("绑定 X")).toHaveCount(0);
 
   await page.goto("/demo");
-  await expect(page.getByText("不绑定，就没有量。")).toBeVisible();
+  await expect(page.getByText("AI 员工要每天有稳定的询问。")).toBeVisible();
   await expect(page.getByRole("button", { name: "继续" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "missbunny" })).toBeVisible();
   await expect(page.getByText("不服务经纪公司")).toBeVisible();
@@ -71,16 +67,14 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
   );
   await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
   await page.getByRole("button", { name: "Self-run" }).click();
-  await expect(page.getByText("X is not connected")).toBeVisible();
-  await expect(page.getByText("IVY is not connected")).toBeVisible();
-  await page.getByRole("button", { name: "Connect X (demo)" }).click();
-  await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
-  await expect(page.getByText("IVY is not connected")).toBeVisible();
-  await page.getByRole("button", { name: "Connect IVY (demo)" }).click();
   await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+  await expect(page.getByText("IVY")).toHaveCount(0);
+  await expect(page.getByText("Connect X")).toHaveCount(0);
 
   await page.goto("/demo?lang=en");
-  await expect(page.getByText("Without a connection, there is no volume.")).toBeVisible();
+  await expect(
+    page.getByText("The AI employee needs a steady stream of inquiries every day."),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "missbunny" })).toBeVisible();
   await expect(page.getByText("not agencies")).toBeVisible();

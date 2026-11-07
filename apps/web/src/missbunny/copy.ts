@@ -21,13 +21,7 @@ export type Copy = {
   join: string;
   joinReason: string;
   selfRun: string;
-  connectX: string;
-  connectedX: string;
-  connectIvy: string;
-  connectedIvy: string;
   chooseSelfRun: string;
-  missingX: string;
-  missingIvy: string;
   joined: string;
   continue: string;
   language: string;
@@ -99,15 +93,9 @@ const zh: Copy = {
     ["客人留下电话就能约", "订金默认是 0。要收，就在设置里打开 PayID 订金。"],
   ],
   join: "入驻",
-  joinReason: "搜索流量不够。AI 员工要每天有稳定的询问。不绑定，就没有量。",
+  joinReason: "搜索流量不够。AI 员工要每天有稳定的询问。",
   selfRun: "自运营",
-  connectX: "绑定 X（演示）",
-  connectedX: "X 已绑定（演示）",
-  connectIvy: "绑定 IVY（演示）",
-  connectedIvy: "IVY 已绑定（演示）",
   chooseSelfRun: "先选择自运营",
-  missingX: "还没绑定 X",
-  missingIvy: "还没绑定 IVY",
   joined: "入驻完成（演示）",
   continue: "继续",
   language: "语言",
@@ -190,15 +178,9 @@ const en: Copy = {
   ],
   join: "Join",
   joinReason:
-    "Search traffic is not enough. The AI employee needs a steady stream of inquiries every day. Without a connection, there is no volume.",
+    "Search traffic is not enough. The AI employee needs a steady stream of inquiries every day.",
   selfRun: "Self-run",
-  connectX: "Connect X (demo)",
-  connectedX: "X connected (demo)",
-  connectIvy: "Connect IVY (demo)",
-  connectedIvy: "IVY connected (demo)",
   chooseSelfRun: "Choose self-run first",
-  missingX: "X is not connected",
-  missingIvy: "IVY is not connected",
   joined: "Joined (demo)",
   continue: "Continue",
   language: "Language",
