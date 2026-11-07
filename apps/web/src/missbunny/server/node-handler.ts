@@ -1,3 +1,5 @@
+import { handleMissbunny } from "./http";
+
 type NodeRequest = {
   method?: string;
   url?: string;
@@ -26,9 +28,9 @@ async function fromNode(req: NodeRequest): Promise<Request> {
   let body: string | undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {
     if (typeof req.body === "string") body = req.body;
-    else if (typeof Buffer !== "undefined" && Buffer.isBuffer(req.body))
+    else if (typeof Buffer !== "undefined" && Buffer.isBuffer(req.body)) {
       body = req.body.toString("utf8");
-    else if (req.body !== undefined) {
+    } else if (req.body !== undefined) {
       body = JSON.stringify(req.body);
       if (!headers.has("content-type")) headers.set("content-type", "application/json");
     }
@@ -44,10 +46,9 @@ async function send(res: NodeResponse, response: Response) {
   res.end(Buffer.from(await response.arrayBuffer()));
 }
 
-/** Vercel calls this with a Node request and response. */
+/** The hosted runtime calls this with a Node request and response. */
 export default async function handler(req: Request | NodeRequest, res?: NodeResponse) {
   try {
-    const { handleMissbunny } = await import("../src/missbunny/server/http");
     const response = isWebRequest(req)
       ? await handleMissbunny(req)
       : await handleMissbunny(await fromNode(req));
