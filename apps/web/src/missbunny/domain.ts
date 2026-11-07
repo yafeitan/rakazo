@@ -143,7 +143,6 @@ export type PublicProfile = {
   bio: string;
   photoCount: number;
   paymentLabels: string[];
-  depositAmount: number;
 };
 
 export type Gap = { id: string; suggestion: string };
@@ -301,7 +300,6 @@ export function toPublicProfile(profile: Profile): PublicProfile {
     bio: profile.bio,
     photoCount: profile.photoCount,
     paymentLabels: profile.paymentMethods.map((method) => method.label),
-    depositAmount: profile.depositAmount,
   };
 }
 

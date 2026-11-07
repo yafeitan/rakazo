@@ -1,11 +1,12 @@
 import { Button, buttonVariants, Input, Label, SectionHeading, Switch } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type { Assessment, OrderView } from "../api";
 import { call } from "../api";
 import { formatAud } from "../domain";
 import { useLocale } from "../locale";
 import { useDemo } from "../shell";
+import { AhaPlay } from "./aha";
 
 type Ledger = { days: { date: string; amount: number }[]; total: number; today: number };
 
@@ -70,6 +71,7 @@ function Bars({ days }: { days: Ledger["days"] }) {
 export function DashboardPage() {
   const { shell, apply } = useDemo();
   const { lang, copy } = useLocale();
+  const [params] = useSearchParams();
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -140,6 +142,7 @@ export function DashboardPage() {
   if (shell.session.role !== "model") {
     return <p className="pt-8 text-muted-foreground">{copy.switchToModel}</p>;
   }
+  if (params.get("aha") === "1") return <AhaPlay />;
   if (!data) return error ? <p className="pt-8 text-destructive">{error}</p> : null;
 
   if (!data.engineStarted) {

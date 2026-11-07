@@ -3,32 +3,36 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { PublicProfile } from "../api";
 import { call } from "../api";
+import { useLocale } from "../locale";
 import { useDemo } from "../shell";
 
 export function BrowsePage() {
   const { apply } = useDemo();
+  const { lang, copy } = useLocale();
   const [query, setQuery] = useState("");
-  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
+  const [profiles, setProfiles] = useState<PublicProfile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     const timer = window.setTimeout(() => {
-      void call<{ profiles: PublicProfile[] }>("profiles", { q: query })
+      void call<{ profiles: PublicProfile[] }>("profiles", { q: query, lang })
         .then((body) => {
           if (!active) return;
           apply(body.shell);
           setProfiles(body.profiles);
         })
         .catch((reason: unknown) => {
-          if (active) setError(reason instanceof Error ? reason.message : "没有完成");
+          if (!active) return;
+          setProfiles([]);
+          setError(reason instanceof Error ? reason.message : copy.notFinished);
         });
     }, 200);
     return () => {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [apply, query]);
+  }, [apply, copy.notFinished, lang, query]);
 
   return (
     <div className="flex flex-col gap-6 pt-4">
@@ -40,8 +44,8 @@ export function BrowsePage() {
         className="h-12 rounded-xl px-4 text-[16px]/6 md:text-body-lg"
       />
       {error ? <p className="text-body text-destructive">{error}</p> : null}
-      {profiles.length === 0 ? (
-        <p className="text-body text-muted-foreground">没有匹配的主页</p>
+      {profiles === null ? null : profiles.length === 0 ? (
+        <p className="text-body text-muted-foreground">{copy.noMatches}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {profiles.map((profile) => (

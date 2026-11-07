@@ -3,6 +3,7 @@ import {
   acknowledgeInquiry,
   assess,
   bookInquiry,
+  checkout,
   commitEngine,
   completeOrder,
   confirmReceived,
@@ -39,6 +40,10 @@ describe("missbunny profiles", () => {
     expect(listed.map((profile) => profile.stageName).sort()).toEqual(["晚棠", "澄月"]);
     expect(visible(listed)).not.toContain("wx-");
     for (const marker of PRIVATE_MARKERS) expect(visible(listed)).not.toContain(marker);
+    expect(listed[0]).not.toHaveProperty("depositAmount");
+    const priced = checkout(state, "wantang");
+    expect(priced?.depositAmount).toBe(100);
+    expect(priced?.profile).not.toHaveProperty("depositAmount");
   });
 
   it("searches by city without returning contacts", () => {

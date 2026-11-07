@@ -71,6 +71,22 @@ export type Copy = {
   noneYet: string;
   markComplete: string;
   notFinished: string;
+  noMatches: string;
+  available: string;
+  plans: string;
+  payment: string;
+  book: string;
+  desk: string;
+  ahaGuest: string;
+  ahaReply: string;
+  ahaSteps: readonly [string, string, string];
+  ahaPending: string;
+  ahaConfirmed: string;
+  ahaReceived: string;
+  ahaContactHidden: string;
+  ahaContactOpen: string;
+  ahaContact: string;
+  ahaLedger: string;
 };
 
 const zh: Copy = {
@@ -151,6 +167,27 @@ const zh: Copy = {
   noneYet: "还没有",
   markComplete: "标记完成",
   notFinished: "没有完成",
+  noMatches: "没有匹配的主页",
+  available: "可约",
+  plans: "安排",
+  payment: "收款",
+  book: "预约",
+  desk: "模特后台",
+  ahaGuest: "周四晚上还有空吗？想约一次私人晚宴。",
+  ahaReply:
+    "周四到周日傍晚之后可以。私人晚宴可以安排。请先用 PayID 付 A$100 订金（演示）。到账后我再发联系方式。",
+  ahaSteps: [
+    "客人刚发来一条询问。",
+    "AI 正在用她的口吻回复，并确认这是不是一次预约。",
+    "AI 正在向客人收取 PayID 订金。",
+  ],
+  ahaPending: "待付订金 · PayID A$100（演示）",
+  ahaConfirmed: "订金已确认 · PayID A$100（演示）",
+  ahaReceived: "已收款",
+  ahaContactHidden: "客人的联系方式尚未开放",
+  ahaContactOpen: "客人的联系方式已开放",
+  ahaContact: "0400 000 222（演示）",
+  ahaLedger: "账本记入 PayID 订金 A$100（演示）",
 };
 
 const en: Copy = {
@@ -237,6 +274,27 @@ const en: Copy = {
   noneYet: "None yet",
   markComplete: "Mark complete",
   notFinished: "Didn’t finish",
+  noMatches: "No matching profiles",
+  available: "Available",
+  plans: "Plans",
+  payment: "Payment",
+  book: "Book",
+  desk: "Model desk",
+  ahaGuest: "Are you free Thursday evening? I’d like a private dinner.",
+  ahaReply:
+    "Thursday to Sunday, after dusk, works. A private dinner is fine. Please send the A$100 PayID deposit first (demo). I’ll send contact details once it arrives.",
+  ahaSteps: [
+    "A guest just sent an inquiry.",
+    "The AI is answering in her voice and checking that this is a booking.",
+    "The AI is asking the guest for the PayID deposit.",
+  ],
+  ahaPending: "Deposit pending · PayID A$100 (demo)",
+  ahaConfirmed: "Deposit confirmed · PayID A$100 (demo)",
+  ahaReceived: "Payment received",
+  ahaContactHidden: "The guest’s contact details are still closed",
+  ahaContactOpen: "The guest’s contact details are open",
+  ahaContact: "0400 000 222 (demo)",
+  ahaLedger: "Ledger records the PayID deposit A$100 (demo)",
 };
 
 export const copy: Record<Lang, Copy> = { zh, en };
@@ -361,6 +419,55 @@ function englishOrder<T extends OrderRow>(order: T): T {
     startsAt: englishWhen(order.startsAt),
     paymentLabel,
   };
+}
+
+type PublicText = {
+  slug: string;
+  stageName: string;
+  city: string;
+  languages: string[];
+  services: string;
+  availability: string;
+  bio: string;
+  paymentLabels: string[];
+};
+
+const PUBLIC_EN: Record<string, Omit<PublicText, "slug">> = {
+  wantang: {
+    stageName: "Wantang",
+    city: "Melbourne",
+    languages: ["Chinese", "English"],
+    services: "Private dinner company, event attendance, and quiet trips around the city.",
+    availability: "Thursday to Sunday, after dusk",
+    bio: "Wantang works independently in Melbourne. She keeps evenings for guests she has already invited, for private dinners and quiet trips around the city. Contact details open after she confirms payment.",
+    paymentLabels: ["PayID"],
+  },
+  chengyue: {
+    stageName: "Chengyue",
+    city: "Sydney",
+    languages: ["Chinese", "Cantonese", "English"],
+    services: "Travel company, private dinners, and gallery or event attendance.",
+    availability: "Wednesday to Saturday, after 4pm",
+    bio: "Chengyue works independently in Sydney and only sees guests she has already invited. She joins trips, dinners, and quiet evenings. Contact details open after she confirms payment.",
+    paymentLabels: ["Bank transfer"],
+  },
+  ali: {
+    stageName: "Ali",
+    city: "Brisbane",
+    languages: ["Chinese"],
+    services: "",
+    availability: "",
+    bio: "",
+    paymentLabels: [],
+  },
+};
+
+/** English wording for the seeded public profiles. Stored profiles stay Chinese. */
+export function localizePublicProfile<T extends PublicText>(profile: T, lang: Lang): T {
+  if (lang !== "en") return profile;
+  const translated = PUBLIC_EN[profile.slug];
+  if (!translated) return profile;
+  return { ...profile, ...translated };
 }
 
 /** English is a view of the same dashboard. Stored demo data stays Chinese. */

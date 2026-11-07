@@ -1,17 +1,37 @@
 import { Button } from "@rakazo/ui-web";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { call } from "../api";
 import { useLocale } from "../locale";
 import type { OnboardingBinds } from "../onboarding";
 import { missingOnboarding, onboardingReady } from "../onboarding";
+import { useDemoOptional } from "../shell";
 
 const EMPTY: OnboardingBinds = { selfRun: false };
 
 export function OnboardingFlow() {
-  const { copy } = useLocale();
+  const navigate = useNavigate();
+  const demo = useDemoOptional();
+  const { lang, copy } = useLocale();
   const [state, setState] = useState<OnboardingBinds>(EMPTY);
-  const [done, setDone] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
   const missing = missingOnboarding(state);
   const ready = onboardingReady(state);
+
+  async function finish() {
+    setPending(true);
+    try {
+      const body = await call("session", { role: "model", modelId: "wantang" });
+      demo?.apply(body.shell);
+      const params = new URLSearchParams(lang === "en" ? "lang=en" : "");
+      params.set("aha", "1");
+      navigate({ pathname: "/studio/dashboard", search: params.toString() });
+    } catch {
+      setFailed(true);
+      setPending(false);
+    }
+  }
 
   return (
     <section className="flex flex-col gap-5 text-left">
@@ -32,12 +52,12 @@ export function OnboardingFlow() {
           {copy.chooseSelfRun}
         </p>
       ) : null}
-      {done ? <p>{copy.joined}</p> : null}
+      {failed ? <p className="text-destructive">{copy.notFinished}</p> : null}
       <Button
         type="button"
         variant="outline"
-        disabled={!ready || done}
-        onClick={() => setDone(true)}
+        disabled={!ready || pending}
+        onClick={() => void finish()}
       >
         {copy.continue}
       </Button>

@@ -20,6 +20,10 @@ export function useDemo(): DemoContextValue {
   return value;
 }
 
+export function useDemoOptional(): DemoContextValue | null {
+  return useContext(DemoContext);
+}
+
 function Mark() {
   return (
     <span

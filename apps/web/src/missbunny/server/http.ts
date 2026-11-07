@@ -1,5 +1,5 @@
 import type { Lang } from "../copy";
-import { localizeDashboard, parseLang } from "../copy";
+import { localizeDashboard, localizePublicProfile, parseLang } from "../copy";
 import type { DemoState, ProfileDraft } from "../domain";
 import {
   acknowledgeInquiry,
@@ -70,19 +70,29 @@ async function dispatch(
     return json(next, {});
   }
   if (op === "profiles") {
-    return json(state, { profiles: searchProfiles(state, stringField(body.q)) });
+    const lang = parseLang(body.lang);
+    return json(state, {
+      profiles: searchProfiles(state, stringField(body.q)).map((profile) =>
+        localizePublicProfile(profile, lang),
+      ),
+    });
   }
   if (op === "profile") {
     const profile = state.profiles.find(
       (item) => item.slug === stringField(body.slug) && item.published,
     );
     if (!profile) return fail(state, "找不到主页", 404);
-    return json(state, { profile: toPublicProfile(profile) });
+    return json(state, {
+      profile: localizePublicProfile(toPublicProfile(profile), parseLang(body.lang)),
+    });
   }
   if (op === "checkout") {
     const result = checkout(state, stringField(body.slug));
     if (!result) return fail(state, "找不到主页", 404);
-    return json(state, result);
+    return json(state, {
+      ...result,
+      profile: localizePublicProfile(result.profile, parseLang(body.lang)),
+    });
   }
   if (op === "studio") {
     if (state.session.role !== "model") return fail(state, "请切换到模特", 403);

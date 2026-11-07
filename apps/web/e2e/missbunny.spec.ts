@@ -49,6 +49,27 @@ test("missbunny opens the guest booking flows and the model dashboard", async ({
   await expect(page.getByText("只用你资料里的内容回答，不编")).toBeVisible();
 });
 
+test("onboarding opens a scripted model desk and the public profile hides the deposit", async ({
+  page,
+}) => {
+  await page.goto("/models/wantang");
+  await expect(page.getByRole("heading", { name: "晚棠" })).toBeVisible();
+  await expect(page.getByText("私人晚宴陪同")).toBeVisible();
+  await expect(page.getByText("PayID 订金")).toHaveCount(0);
+
+  await page.goto("/home");
+  await page.getByRole("button", { name: "自运营" }).click();
+  await page.getByRole("button", { name: "继续" }).click();
+  await expect(page).toHaveURL(/\/studio\/dashboard\?aha=1/);
+  await expect(page.getByRole("heading", { name: "模特后台" })).toBeVisible();
+  await expect(page.getByText("周四晚上还有空吗？想约一次私人晚宴。")).toBeVisible();
+  await expect(page.getByText("私人晚宴可以安排")).toBeVisible();
+  await expect(page.getByText("待付订金")).toBeVisible();
+  await page.getByRole("button", { name: "已收款" }).click();
+  await expect(page.getByText("0400 000 222（演示）")).toBeVisible();
+  await expect(page.getByText("账本记入 PayID 订金 A$100（演示）")).toBeVisible();
+});
+
 test("missbunny english covers the homepage, join flow, demo, and dashboard", async ({ page }) => {
   await page.goto("/home?lang=en");
   await expect(
@@ -90,9 +111,24 @@ test("missbunny english covers the homepage, join flow, demo, and dashboard", as
   await expect(page.getByText("Are you free Thursday evening?")).toBeVisible();
   await expect(page.getByText("Needs you to confirm")).toBeVisible();
   await expect(page.getByText("工具费")).toHaveCount(0);
-  await expect(page).toHaveURL(/lang=en/);
-
   await page.getByRole("button", { name: "中文", exact: true }).click();
   await expect(page.getByRole("heading", { name: "订金" })).toBeVisible();
   await expect(page).not.toHaveURL(/lang=en/);
+
+  await page.goto("/models/wantang?lang=en");
+  await expect(page.getByRole("heading", { name: "Wantang" })).toBeVisible();
+  await expect(page.getByText("Melbourne · Chinese · English")).toBeVisible();
+  await expect(page.getByText("Private dinner company")).toBeVisible();
+  await expect(page.getByText("PayID 订金")).toHaveCount(0);
+
+  await page.goto("/home?lang=en");
+  await page.getByRole("button", { name: "Self-run" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/aha=1/);
+  await expect(page.getByRole("heading", { name: "Model desk" })).toBeVisible();
+  await expect(page.getByText("I’d like a private dinner.")).toBeVisible();
+  await expect(page.getByText("Deposit pending")).toBeVisible();
+  await page.getByRole("button", { name: "Payment received" }).click();
+  await expect(page.getByText("0400 000 222 (demo)")).toBeVisible();
+  await expect(page.getByText("Ledger records the PayID deposit A$100 (demo)")).toBeVisible();
 });

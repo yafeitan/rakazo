@@ -81,7 +81,27 @@ var en = {
   recentBookings: "Recent bookings",
   noneYet: "None yet",
   markComplete: "Mark complete",
-  notFinished: "Didn\u2019t finish"
+  notFinished: "Didn\u2019t finish",
+  noMatches: "No matching profiles",
+  available: "Available",
+  plans: "Plans",
+  payment: "Payment",
+  book: "Book",
+  desk: "Model desk",
+  ahaGuest: "Are you free Thursday evening? I\u2019d like a private dinner.",
+  ahaReply: "Thursday to Sunday, after dusk, works. A private dinner is fine. Please send the A$100 PayID deposit first (demo). I\u2019ll send contact details once it arrives.",
+  ahaSteps: [
+    "A guest just sent an inquiry.",
+    "The AI is answering in her voice and checking that this is a booking.",
+    "The AI is asking the guest for the PayID deposit."
+  ],
+  ahaPending: "Deposit pending \xB7 PayID A$100 (demo)",
+  ahaConfirmed: "Deposit confirmed \xB7 PayID A$100 (demo)",
+  ahaReceived: "Payment received",
+  ahaContactHidden: "The guest\u2019s contact details are still closed",
+  ahaContactOpen: "The guest\u2019s contact details are open",
+  ahaContact: "0400 000 222 (demo)",
+  ahaLedger: "Ledger records the PayID deposit A$100 (demo)"
 };
 var QUESTIONS = {
   "lead-time": "Are you free Thursday evening?",
@@ -160,6 +180,41 @@ function englishOrder(order) {
     startsAt: englishWhen(order.startsAt),
     paymentLabel
   };
+}
+var PUBLIC_EN = {
+  wantang: {
+    stageName: "Wantang",
+    city: "Melbourne",
+    languages: ["Chinese", "English"],
+    services: "Private dinner company, event attendance, and quiet trips around the city.",
+    availability: "Thursday to Sunday, after dusk",
+    bio: "Wantang works independently in Melbourne. She keeps evenings for guests she has already invited, for private dinners and quiet trips around the city. Contact details open after she confirms payment.",
+    paymentLabels: ["PayID"]
+  },
+  chengyue: {
+    stageName: "Chengyue",
+    city: "Sydney",
+    languages: ["Chinese", "Cantonese", "English"],
+    services: "Travel company, private dinners, and gallery or event attendance.",
+    availability: "Wednesday to Saturday, after 4pm",
+    bio: "Chengyue works independently in Sydney and only sees guests she has already invited. She joins trips, dinners, and quiet evenings. Contact details open after she confirms payment.",
+    paymentLabels: ["Bank transfer"]
+  },
+  ali: {
+    stageName: "Ali",
+    city: "Brisbane",
+    languages: ["Chinese"],
+    services: "",
+    availability: "",
+    bio: "",
+    paymentLabels: []
+  }
+};
+function localizePublicProfile(profile, lang) {
+  if (lang !== "en") return profile;
+  const translated = PUBLIC_EN[profile.slug];
+  if (!translated) return profile;
+  return { ...profile, ...translated };
 }
 function localizeDashboard(view, lang) {
   if (lang === "zh") return view;
@@ -288,8 +343,7 @@ function toPublicProfile(profile) {
     availability: profile.availability,
     bio: profile.bio,
     photoCount: profile.photoCount,
-    paymentLabels: profile.paymentMethods.map((method) => method.label),
-    depositAmount: profile.depositAmount
+    paymentLabels: profile.paymentMethods.map((method) => method.label)
   };
 }
 function searchProfiles(state, query) {
@@ -1101,19 +1155,29 @@ async function dispatch(state, body) {
     return json(next, {});
   }
   if (op === "profiles") {
-    return json(state, { profiles: searchProfiles(state, stringField(body.q)) });
+    const lang = parseLang(body.lang);
+    return json(state, {
+      profiles: searchProfiles(state, stringField(body.q)).map(
+        (profile) => localizePublicProfile(profile, lang)
+      )
+    });
   }
   if (op === "profile") {
     const profile = state.profiles.find(
       (item) => item.slug === stringField(body.slug) && item.published
     );
     if (!profile) return fail(state, "\u627E\u4E0D\u5230\u4E3B\u9875", 404);
-    return json(state, { profile: toPublicProfile(profile) });
+    return json(state, {
+      profile: localizePublicProfile(toPublicProfile(profile), parseLang(body.lang))
+    });
   }
   if (op === "checkout") {
     const result = checkout(state, stringField(body.slug));
     if (!result) return fail(state, "\u627E\u4E0D\u5230\u4E3B\u9875", 404);
-    return json(state, result);
+    return json(state, {
+      ...result,
+      profile: localizePublicProfile(result.profile, parseLang(body.lang))
+    });
   }
   if (op === "studio") {
     if (state.session.role !== "model") return fail(state, "\u8BF7\u5207\u6362\u5230\u6A21\u7279", 403);

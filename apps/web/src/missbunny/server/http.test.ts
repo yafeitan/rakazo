@@ -67,6 +67,8 @@ describe("missbunny http", () => {
     expect(withoutToken(phoneOnly.body ?? {})).not.toContain("bank-chengyue-private");
     const profile = await post("profile", token, { slug: "wantang" });
     expect(withoutToken(profile.body ?? {})).not.toContain("payid-wantang-private");
+    expect(field(profile.body, "profile")).not.toHaveProperty("depositAmount");
+    expect(field(open.body, "depositAmount")).toBe(100);
 
     const pending = await post("order", token, { id: "order-pending" });
     expect(withoutToken(pending.body ?? {})).not.toContain("wx-wantang-private");
