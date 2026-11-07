@@ -215,7 +215,16 @@ export function Checkout() {
       {demo.guestPaid ? (
         <p>{tx(lang, "她看一下到账。", "She'll check the transfer.")}</p>
       ) : (
-        <button type="button" className="btn pri" onClick={() => demo.markGuestPaid()}>
+        <button
+          type="button"
+          className="btn pri"
+          onClick={() => {
+            if (!demo.walkIn) {
+              demo.setWalkIn({ when: "未定", duration: "1小时", place: "悉尼", cents: 60000 });
+            }
+            demo.markGuestPaid();
+          }}
+        >
           {tx(lang, "我已付款", "I've paid")}
         </button>
       )}

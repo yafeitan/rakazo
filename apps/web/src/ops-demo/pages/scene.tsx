@@ -65,11 +65,13 @@ export function Scene() {
               {tx(lang, "已收款", "Payment received")}
             </button>
           ) : null}
-          {demo.walkInUnlocked && demo.walkIn ? (
+          {demo.walkInUnlocked ? (
             <div className="unlock stack">
               <strong>{tx(lang, "已解锁，转她私域", "Unlocked. Her private channels.")}</strong>
               <span>
-                {demo.walkIn.when} · {demo.walkIn.place}
+                {demo.walkIn
+                  ? `${demo.walkIn.when} · ${demo.walkIn.place}`
+                  : tx(lang, "悉尼", "Sydney")}
               </span>
               <span>{tx(lang, "见面两小时前再看一眼。", "Look again two hours before.")}</span>
             </div>
